@@ -44,7 +44,6 @@ $sFilesOnly = 1 ;$foldersOnly = 2
 $sSrcPath = @ScriptDir & "\src"
 If FileExists($sSrcPath) Then
    $aDriverZips = _FileListToArray($sSrcPath, "*.zip")
-   ; _ArrayDisplay($aDriverZips, "$aDriverZips")
 EndIf
 
 ; Start Looping program to hide Command Line Windows
@@ -54,7 +53,7 @@ If @error = 1 Then
    Exit
 EndIf
  
-; Delete Optional Installs from Install Array
+; Delete Optional Installs (99_) from DriverZips Array
 $sDriverZips = _ArrayToString($aDriverZips, ",")
 $sTestQuery = '\Q99_\E.*?,'
 $sDriverZipsNoOptionals = StringRegExpReplace($sDriverZips, $sTestQuery, "")
