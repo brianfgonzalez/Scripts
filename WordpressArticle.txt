@@ -1,0 +1,128 @@
+To use this script you must have the following tasks completed:
+1. Captured a Syspreped image, with the "C:\Drivers" directory added to the DevicePath reg setting.
+2. On a server share, you must share a "Drivers" directory, with sub-directories setup for each model specific driver.  Windows 7 will recurse directories in C:\Drivers, while WinXP will not.
+3. In Windows a .PWL file must be created using the "loginw.exe" utility, which is stored in the "C:\Program Files\Altiris\Altiris Agent\Agents\Deployment\Task Handler\bootwiz\Platforms\Winpe2\x86\Optional\Boot" directory in a standard installation of Altiris 7.1.  Once created drop the .PWL file in the "C:\Program Files\Altiris\Altiris Agent\Agents\Deployment\Task Handler\bootwiz\Platforms\Winpe2\x86\BASE\" directory and rebuild your boot files.
+
+<pre lang="vb" line="1">
+'==========================================================================
+'
+' NAME: CopyVendorDrivers.vbs
+'
+' AUTHOR: Brian Gonzalez , Panasonic
+' DATE  : 7/13/2012
+'
+' COMMENT:
+'
+'
+'	Return:
+'	0 = No Errors
+'	1 = X:\loginw.exe not found, may not be booted into PE2.
+'	2 = Connecting to server alt001 failed.
+'	3 = Mapping to \\alt001\Drivers failed.
+'	4 = Unable to create \Drivers directory.
+'	5 = Error occured when executing WMI Query for Model.
+'	6 = Error occured when executing WMI Query for Product.
+'	7 = Copy %Model% drivers to Target drivers failed.
+'	8 = Copy %Product% drivers to Target drivers failed.
+'	9 = Copy %Common% drivers to Target drivers failed.
+'	10 = Creation of dummy file recording Product and Model failed.
+'
+'==========================================================================
+On Error Resume Next
+dim objFSO, objFile, objShell, objWMI, objNetwork, objRef
+dim strScriptFolder, strTargetOS, strTargetOSDriveLetter, item
+dim strProduct, strModel
+
+set objFSO = CreateObject("Scripting.FileSystemObject")
+set objShell = CreateObject("WScript.Shell")
+'set objNetwork = CreateObject("WScript.Network")
+Set objWMI = GetObject("Winmgmts://.")
+strScriptFolder = objFSO.GetParentFolderName(WScript.ScriptFullName) 'No trailing backslash
+Const ReturnImmediately=&h10
+Const ForwardOnly=&h20
+
+If objFSO.FileExists("X:\loginw.exe") Then
+	objShell.Run "X:\loginw.exe -f ""X:\briang.pwl"" -c ""alt001"" -d ""supportishere.com""", 3, True
+Else
+	WScript.Quit(1)
+End If
+
+If Err.Number Then
+	WScript.Quit(2)
+End If
+
+objShell.Run "cmd /c net use K: \\alt001\Drivers", 3, True
+If Err.Number Then
+	WScript.Quit(3)
+End If
+
+If objFSO.FileExists("C:\boot.ini") Then
+	strTargetOS = "XP"
+	strTargetOSDriveLetter = "C:"
+Else
+	strTargetOS = "7"
+	strTargetOSDriveLetter = "D:"
+End If
+
+strLocalDriverFolder = strTargetOSDriveLetter & "\Drivers"
+If Not objFSO.FolderExists(strLocalDriverFolder) Then
+	objFSO.CreateFolder strLocalDriverFolder
+	If Err.Number Then
+		WScript.Quit(4)
+	End If
+End If
+
+strQuery="Select Model FROM Win32_ComputerSystem"
+Set objRef = objWMI.ExecQuery(strQuery,"WQL",ForwardOnly+ReturnImmediately)
+If Err.Number Then
+	WScript.Quit(5)
+End If
+
+for each item in objRef
+	strModel = item.model
+Next
+
+strQuery="Select Product FROM Win32_Baseboard"
+Set objRef = objWMI.ExecQuery(strQuery,"WQL",ForwardOnly+ReturnImmediately)
+If Err.Number Then
+	WScript.Quit(6)
+End If
+
+for each item in objRef
+	strProduct = item.product
+Next
+
+strServerModelDriverFolder = "K:\" & strModel & "-" & strTargetOS
+If objFSO.FolderExists(strServerModelDriverFolder) Then
+	objShell.Run "xcopy """ & strServerModelDriverFolder & "\*.*"" """ & strLocalDriverFolder & "\"" /heyi", 3, True
+	If Err.Number Then
+		WScript.Quit(7)
+	End If
+End If
+
+strServerProductDriverFolder = "K:\" & strProduct & "-" & strTargetOS
+If objFSO.FolderExists(strServerProductDriverFolder) Then
+	objShell.Run "xcopy """ & strServerProductDriverFolder & "\*.*"" """ & strLocalDriverFolder & "\"" /heyi", 3, True
+	If Err.Number Then
+		WScript.Quit(8)
+	End If
+End If
+
+strServerCommonDriverFolder = "K:\Common" & "-" & strTargetOS
+If objFSO.FolderExists(strServerCommonDriverFolder) Then
+	objShell.Run "xcopy """ & strServerCommonDriverFolder & "\*.*"" """ & strLocalDriverFolder & "\"" /heyi", 3, True
+	If Err.Number Then
+		WScript.Quit(9)
+	End If
+End If
+
+objFSO.CreateTextFile strTargetOSDriveLetter & "\" & strProduct & ".txt"
+If Err.Number Then
+	WScript.Quit(10)
+End If
+
+objFSO.CreateTextFile strTargetOSDriveLetter & "\" & strModel & ".txt"
+If Err.Number Then
+	WScript.Quit(10)
+End If
+</pre>
