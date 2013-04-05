@@ -1,0 +1,4 @@
+Command String,File or Folder Check
+CMD.exe /c echo This is command #1>"D:\T\CommandNum1.txt",D:\T\CommandNum1.txt
+CMD.exe /c echo This is command #2>"D:\T\CommandNum2.txt"
+CMD.exe /c echo This is command #3>"D:\T\CommandNum3.txt"
