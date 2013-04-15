@@ -1,0 +1,111 @@
+;
+; newmisc.inf
+; Misc Driver
+; Setup Information File
+; (C) Panasonic Corporation 2006-2010
+; Mitsuhiro KIZU (Software Designing Team-2, Technology Center)
+;
+[Version]
+Signature="$WINDOWS NT$"
+Class=System
+ClassGuid={4D36E97D-E325-11CE-BFC1-08002BE10318}
+Provider=%MatMfg%
+DriverVer=11/04/2010, 1.3.1100.100
+CatalogFile=newmisc.cat
+
+[DestinationDirs]
+DefaultDestDir = 12
+NewMisc_Device_CoInstaller_CopyFiles = 11
+NewMisc_Device_CoInstaller_CopyFiles64 = 11
+
+[SourceDisksNames]
+1 = %DiskId1%,,,""
+
+[SourceDisksFiles.x86]
+newmisc.sys = 1
+
+[SourceDisksFiles.amd64]
+nmisc64.sys = 1
+
+[Manufacturer]
+%MatMfg%=Panasonic,NTamd64
+
+[Panasonic]
+%NewMisc.DeviceDesc%=NewMisc_Device.NT, root\newmisc
+%NewMisc.DeviceDesc%=NewMisc_Device.NT, *MAT0021
+
+[Panasonic.NTamd64]
+%NewMisc.DeviceDesc%=NewMisc_Device.NTamd64, root\newmisc
+%NewMisc.DeviceDesc%=NewMisc_Device.NTamd64, *MAT0021
+
+[NewMisc_Device.NT]
+CopyFiles=Drivers_Dir
+
+[NewMisc_Device.NTamd64]
+CopyFiles=Drivers_Dir_amd64
+
+[Drivers_Dir]
+newmisc.sys,,,2
+
+[Drivers_Dir_amd64]
+nmisc64.sys,,,2
+
+[NewMisc_Device.NT.Services]
+AddService = NewMisc,%SPSVCINST_ASSOCSERVICE%, NewMisc_Service_Inst
+
+[NewMisc_Device.NTamd64.Services]
+AddService = NewMisc,%SPSVCINST_ASSOCSERVICE%, NewMisc_Service_Inst64
+
+[NewMisc_Service_Inst]
+DisplayName    = %NewMisc.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_AUTO_START 
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\newmisc.sys
+LoadOrderGroup = Extended Base
+
+[NewMisc_Service_Inst64]
+DisplayName    = %NewMisc.SVCDESC%
+ServiceType    = 1               ; SERVICE_KERNEL_DRIVER
+StartType      = 3               ; SERVICE_AUTO_START 
+ErrorControl   = 1               ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %12%\nmisc64.sys
+LoadOrderGroup = Extended Base
+
+[Strings]
+SPSVCINST_ASSOCSERVICE= 0x00000002
+MatMfg = "Panasonic"
+DiskId1 = "Panasonic Misc Driver Installation Disk #1"
+NewMisc.DeviceDesc = "Panasonic Misc Driver"
+NewMisc.SVCDESC = "Panasonic Misc Driver"
+
+
+;;
+;; PINSTCO CoInstaller
+;;
+
+[NewMisc_Device.NT.CoInstallers]
+AddReg=NewMisc_Device_CoInstaller_AddReg
+CopyFiles=NewMisc_Device_CoInstaller_CopyFiles
+
+[NewMisc_Device.NTamd64.CoInstallers]
+AddReg=NewMisc_Device_CoInstaller_AddReg64
+CopyFiles=NewMisc_Device_CoInstaller_CopyFiles64
+
+[NewMisc_Device_CoInstaller_AddReg]
+HKR,,CoInstallers32,0x00010000, "PINSTCO.dll,PInstallCoInstaller"
+
+[NewMisc_Device_CoInstaller_AddReg64]
+HKR,,CoInstallers32,0x00010000, "PINSCO64.dll,PInstallCoInstaller"
+
+[NewMisc_Device_CoInstaller_CopyFiles]
+PINSTCO.dll
+
+[NewMisc_Device_CoInstaller_CopyFiles64]
+PINSCO64.dll
+
+[SourceDisksFiles.x86]
+PINSTCO.dll = 1
+
+[SourceDisksFiles.amd64]
+PINSCO64.dll = 1
