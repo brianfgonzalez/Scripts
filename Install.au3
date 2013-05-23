@@ -3,11 +3,11 @@
 #AutoIt3Wrapper_Outfile=Install.exe
 #AutoIt3Wrapper_Res_Comment=Contact imaging@us.panasonic.com for support.
 #AutoIt3Wrapper_Res_Description=OneClick Panasonic Toughbook Installer.
-#AutoIt3Wrapper_Res_Fileversion=1.2.1
+#AutoIt3Wrapper_Res_Fileversion=1.2.3
 #AutoIt3Wrapper_Res_LegalCopyright=Panasonic Corporation Of North America
 #endregion ;**** Directives created by AutoIt3Wrapper_GUI ****
-FileInstall("7za.exe", "C:\Windows\Temp\7za.exe", 1)
-FileInstall("HideCmdWindowEvery3Sec.exe", "C:\Windows\Temp\HideCmdWindowEvery3Sec.exe", 1)
+FileInstall("7za.exe", @WindowsDir & "\Temp\7za.exe", 1)
+FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEvery3Sec.exe", 1)
 ;** AUT2EXE settings
 ;================================================================================================================
 ; Panasonic Toughbook Parent Script
@@ -29,7 +29,11 @@ FileInstall("HideCmdWindowEvery3Sec.exe", "C:\Windows\Temp\HideCmdWindowEvery3Se
 ; 1.2 - Jan 31 2013
 ;	Changed "##" o pre-fix used for skipped application/driver installs.
 ; 1.2.1 - Feb 4 2013
-;	Changed script to dymanically search for Sub-Folder name and not reply on "src\" name.
+;	Changed script to dymanically search for Sub-Folder name and not rely on "src\" name.
+; 1.2.2 - Apr 17, 2013
+;	Changed all C:\Windows strings to @WindowsDir
+; 1.2.3 - May 14, 2013
+;	Set install.exe to perform an ArraySort on the $aDriverZips and not rely on the OS for correct sorting.
 ;================================================================================================================
 ; AutoIt Includes
 ;================================================================================================================
@@ -44,7 +48,7 @@ FileInstall("HideCmdWindowEvery3Sec.exe", "C:\Windows\Temp\HideCmdWindowEvery3Se
 ; Main Routine
 ;================================================================================================================
 AutoItSetOption("MustDeclareVars", 0)
-$sInstallVersion = "1.2.1"
+$sInstallVersion = "1.2.3"
 Dim $aPNPIDContents[100] ;Array used when checking through the PNPID txt file
 
 ;If Not IsAdmin() Then ; Verifies user is Admin
@@ -53,7 +57,7 @@ Dim $aPNPIDContents[100] ;Array used when checking through the PNPID txt file
 ;EndIf
 
 ; Create LogFile
-$sLogFilePath = "C:\Windows\Temp"
+$sLogFilePath = @WindowsDir & "\Temp"
 $sLogFile = FileOpen($sLogFilePath & "\PanaInstall_" & @YEAR & @MON & @MDAY & "_" & @HOUR & @MIN & ".log", 1)
 If $sLogFile = -1 Then
 	MsgBox(0, "Error", "Unable to access/create log file.")
@@ -78,6 +82,7 @@ FileWriteLine($sLogFile, "=========================================")
 $sFilesOnly = 1
 If FileExists($sSrcPath) Then
 	$aDriverZips = _FileListToArray($sSrcPath, "*.zip", $sFilesOnly)
+	_ArraySort($aDriverZips, 0, 1)
 	;_ArrayDisplay($aDriverZips)
 EndIf
 
@@ -96,7 +101,7 @@ $sDriverZipsNoOptionals = StringRegExpReplace($sDriverZips, $sTestQuery, "")
 $aDriverZips = StringSplit($sDriverZipsNoOptionals, ",")
 
 ; Kick off Hide Command Shell Program
-$sHideCmdWindowPath = "C:\Windows\Temp\HideCmdWindowEvery3Sec.exe"
+$sHideCmdWindowPath = @WindowsDir & "\Temp\HideCmdWindowEvery3Sec.exe"
 If FileExists($sHideCmdWindowPath) Then
 	Run($sHideCmdWindowPath, @ScriptDir, @SW_HIDE)
 	FileWriteLine($sLogFile, "Kicked off " & $sHideCmdWindowPath & "):" & @error)
@@ -105,7 +110,7 @@ Else
 EndIf
 
 ; Copy 7za.exe locally to process ZIP packages
-$s7ZAPath = "C:\Windows\Temp\7za.exe"
+$s7ZAPath = @WindowsDir & "\Temp\7za.exe"
 ; First Make Sure 7za.exe Exists.
 If Not (FileExists($s7ZAPath)) Then
 	FileWriteLine($sLogFile, $s7ZAPath & " was not found, exiting script.")
