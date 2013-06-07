@@ -1,11 +1,12 @@
-#region ;**** Directives created by AutoIt3Wrapper_GUI ****
+#Region ;**** Directives created by AutoIt3Wrapper_GUI ****
 #AutoIt3Wrapper_Icon=tbicon.ico
 #AutoIt3Wrapper_Outfile=Install.exe
 #AutoIt3Wrapper_Res_Comment=Contact imaging@us.panasonic.com for support.
 #AutoIt3Wrapper_Res_Description=OneClick Panasonic Toughbook Installer.
-#AutoIt3Wrapper_Res_Fileversion=1.2.3
+#AutoIt3Wrapper_Res_Fileversion=1.2.4.0
 #AutoIt3Wrapper_Res_LegalCopyright=Panasonic Corporation Of North America
-#endregion ;**** Directives created by AutoIt3Wrapper_GUI ****
+#AutoIt3Wrapper_Res_Language=1033
+#EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 FileInstall("7za.exe", @WindowsDir & "\Temp\7za.exe", 1)
 FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEvery3Sec.exe", 1)
 ;** AUT2EXE settings
@@ -34,6 +35,9 @@ FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEver
 ;	Changed all C:\Windows strings to @WindowsDir
 ; 1.2.3 - May 14, 2013
 ;	Set install.exe to perform an ArraySort on the $aDriverZips and not rely on the OS for correct sorting.
+; 1.2.4 - May 29, 2013
+;	Shortened the name of each step displayed to 35 characters.
+;	Set the current install to skip if its already been run in the past.
 ;================================================================================================================
 ; AutoIt Includes
 ;================================================================================================================
@@ -48,7 +52,7 @@ FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEver
 ; Main Routine
 ;================================================================================================================
 AutoItSetOption("MustDeclareVars", 0)
-$sInstallVersion = "1.2.3"
+$sInstallVersion = "1.2.4"
 Dim $aPNPIDContents[100] ;Array used when checking through the PNPID txt file
 
 ;If Not IsAdmin() Then ; Verifies user is Admin
@@ -145,6 +149,15 @@ fProgressBars(0, "Beginning Tbook Installer...", 0, "")
 For $i = 1 To $aDriverZips[0]
 	$sDriverZipPath = $sSrcPath & "\" & $aDriverZips[$i]
 	$sDriverName = StringLeft($aDriverZips[$i], StringLen($aDriverZips[$i]) - 4) ;Remove file extension when updating progress bars
+
+	If FileExists("C:\Drivers\" & $sSrcFolderName & "\" & $sDriverName) Then
+		FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- C:\Drivers\" & $sSrcFolderName & "\" & $sDriverName & " already exist, jumping to next .ZIP")
+		ContinueLoop
+	EndIf
+
+	If StringLen($sDriverName) > 35 Then
+		$sDriverName = StringLeft($sDriverName, 35) ;If name is longer than 8 characters, shorten the name.
+	EndIf
 	FileWriteLine($sLogFile, "Processing " & $i & " of " & $aDriverZips[0] & "... (" & $aDriverZips[$i] & ")")
 	fProgressBars($sCurrentPercentComplete, "Processing " & $i & " of " & $aDriverZips[0] & " packages in " & $sSrcFolderName & " bundle.", 30, "Beginning to process " & $sDriverName)
 
