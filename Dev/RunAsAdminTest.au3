@@ -1,0 +1,1 @@
+RunAsWait("administrator", @ComputerName, "P@ssw0rd", 0, "ProgramName.EXE", @ScriptDir, @SW_HIDE)
