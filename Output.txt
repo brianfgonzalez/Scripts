@@ -1,0 +1,35 @@
+
+Windows Boot Manager
+--------------------
+identifier              {bootmgr}
+device                  boot
+description             Boot Manager
+displayorder            {bcd81e17-1fac-11e3-8484-000c29b4fa17}
+                        {bce66879-1fac-11e3-8484-000c29b4fa17}
+timeout                 20
+
+Windows Boot Loader
+-------------------
+identifier              {bcd81e17-1fac-11e3-8484-000c29b4fa17}
+device                  partition=C:
+path                    \Windows\system32\winload.exe
+description             Windows OS
+osdevice                partition=C:
+systemroot              \Windows
+detecthal               Yes
+
+Windows Boot Loader
+-------------------
+identifier              {bce66879-1fac-11e3-8484-000c29b4fa17}
+device                  ramdisk=[R:]\Sources\boot.wim,{bcd34c0a-1fac-11e3-8484-000c29b4fa17}
+description             Windows PE
+osdevice                ramdisk=[R:]\Sources\boot.wim,{bcd34c0a-1fac-11e3-8484-000c29b4fa17}
+systemroot              \Windows
+detecthal               Yes
+winpe                   Yes
+
+Device options
+--------------
+identifier              {bcd34c0a-1fac-11e3-8484-000c29b4fa17}
+ramdisksdidevice        partition=R:
+ramdisksdipath          \boot\boot.sdi

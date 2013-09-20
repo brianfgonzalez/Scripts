@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
+	<name>profileholder</name>
+	<SSIDConfig>
+		<SSID>
+			<name>profileholder</name>
+		</SSID>
+	</SSIDConfig>
+	<connectionType>ESS</connectionType>
+	<connectionMode>manual</connectionMode>
+	<MSM>
+		<security>
+			<authEncryption>
+				<authentication>WPA2PSK</authentication>
+				<encryption>AES</encryption>
+				<useOneX>false</useOneX>
+			</authEncryption>
+			<sharedKey>
+				<keyType>passPhrase</keyType>
+				<protected>true</protected>
+				<keyMaterial>01000000D08C9DDF0115D1118C7A00C04FC297EB010000000252906F7E5FE546A2EFBBA12404F39000000000020000000000106600000001000020000000FC364BF5723D00C5C60A0408CE011788E499FE02C616F5C2CF9E9A9C94D98823000000000E800000000200002000000061082665FA3EF3CB8912E15E3517F6DCAA04D6E392420E28D211571D63BF85D210000000B0F0C62FFA1E8B5ED36FDA7C09C084BE400000003119A637D2A2F7379B998448935641CBB51C9A17474C39BA7008FC5EE376A53D679E4E8A4055C2A814C98926829F83E25732B9B42D1B6094210B190452006876</keyMaterial>
+			</sharedKey>
+		</security>
+	</MSM>
+</WLANProfile>
