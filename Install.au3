@@ -3,7 +3,7 @@
 #AutoIt3Wrapper_Outfile=Install.exe
 #AutoIt3Wrapper_Res_Comment=Contact imaging@us.panasonic.com for support.
 #AutoIt3Wrapper_Res_Description=OneClick Panasonic Toughbook Installer.
-#AutoIt3Wrapper_Res_Fileversion=1.2.4.0
+#AutoIt3Wrapper_Res_Fileversion=1.3
 #AutoIt3Wrapper_Res_LegalCopyright=Panasonic Corporation Of North America
 #AutoIt3Wrapper_Res_Language=1033
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
@@ -38,6 +38,10 @@ FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEver
 ; 1.2.4 - May 29, 2013
 ;	Shortened the name of each step displayed to 35 characters.
 ;	Set the current install to skip if its already been run in the past.
+; 1.3 - Dec 16, 2013
+;	Changed C:\ calls to SystemDrive
+;	Added call to DLL to disable 64-Bit Redirection
+;	Added ability to redirect log file to alternate Directory using argument 1
 ;================================================================================================================
 ; AutoIt Includes
 ;================================================================================================================
@@ -52,7 +56,7 @@ FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEver
 ; Main Routine
 ;================================================================================================================
 AutoItSetOption("MustDeclareVars", 0)
-$sInstallVersion = "1.2.4"
+$sInstallVersion = "1.3"
 Dim $aPNPIDContents[100] ;Array used when checking through the PNPID txt file
 
 ;If Not IsAdmin() Then ; Verifies user is Admin
@@ -60,8 +64,14 @@ Dim $aPNPIDContents[100] ;Array used when checking through the PNPID txt file
 ;	Exit
 ;EndIf
 
+; Change LogFile path if argument is passed
+If $cmdLine[0] > 0 Then
+	$sLogFilePath = $cmdLine[1]
+Else
+	$sLogFilePath = @WindowsDir & "\Temp"
+EndIf
+
 ; Create LogFile
-$sLogFilePath = @WindowsDir & "\Temp"
 $sLogFile = FileOpen($sLogFilePath & "\PanaInstall_" & @YEAR & @MON & @MDAY & "_" & @HOUR & @MIN & ".log", 1)
 If $sLogFile = -1 Then
 	MsgBox(0, "Error", "Unable to access/create log file.")
@@ -76,6 +86,13 @@ $cFoldersOnly = 2
 $aSubFolders = _FileListToArray(@ScriptDir, "*", $cFoldersOnly)
 $sSrcFolderName = $aSubFolders[1]
 $sSrcPath = @ScriptDir & "\" & $aSubFolders[1]
+
+; Grab SystemDrive
+$sSystemDrive = EnvGet("systemdrive"); Sets the System Drive for the Customer Computer
+
+; Disable 64-Bit Redirection
+DllCall("kernel32.dll", "int", "Wow64DisableWow64FsRedirection", "int", 1)
+FileWriteLine($sLogFile, "Disabled 64Bit Redirection via DLL call.")
 
 ; Add more information to the log file
 FileWriteLine($sLogFile, "Beginning to Process Bundle Name: " & $sSrcFolderName)
@@ -150,8 +167,8 @@ For $i = 1 To $aDriverZips[0]
 	$sDriverZipPath = $sSrcPath & "\" & $aDriverZips[$i]
 	$sDriverName = StringLeft($aDriverZips[$i], StringLen($aDriverZips[$i]) - 4) ;Remove file extension when updating progress bars
 
-	If FileExists("C:\Drivers\" & $sSrcFolderName & "\" & $sDriverName) Then
-		FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- C:\Drivers\" & $sSrcFolderName & "\" & $sDriverName & " already exist, jumping to next .ZIP")
+	If FileExists($sSystemDrive & "\Drivers\" & $sSrcFolderName & "\" & $sDriverName) Then
+		FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- " & $sSystemDrive & "\Drivers\" & $sSrcFolderName & "\" & $sDriverName & " already exist, jumping to next .ZIP")
 		ContinueLoop
 	EndIf
 
@@ -162,12 +179,12 @@ For $i = 1 To $aDriverZips[0]
 	fProgressBars($sCurrentPercentComplete, "Processing " & $i & " of " & $aDriverZips[0] & " packages in " & $sSrcFolderName & " bundle.", 30, "Beginning to process " & $sDriverName)
 
 	; fProgressBars args: complete percent, text, step percent, text
-	$sDriverExtractFolder = "C:\Drivers\" & $sSrcFolderName & "\" & StringTrimRight($aDriverZips[$i], 4) ; Specify extract folder, driver name without extension
+	$sDriverExtractFolder = $sSystemDrive & "\Drivers\" & $sSrcFolderName & "\" & StringTrimRight($aDriverZips[$i], 4) ; Specify extract folder, driver name without extension
 	$sCurrentStep = $sCurrentStep + 1
 	$sCurrentPercentComplete = fGrabPercentComplete($sCurrentStep)
 	fProgressBars($sCurrentPercentComplete, "Processing " & $i & " of " & $aDriverZips[0] & " packages in " & $sSrcFolderName & " bundle.", 33, "Extracting " & $sDriverName)
 	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Beggining to extract driver """ & $aDriverZips[$i] & """ to (" & $sDriverExtractFolder & "): ")
-	$sRet = RunWait("cmd.exe /c 7za.exe x """ & $sDriverZipPath & """ -o""C:\Drivers\" & $sSrcFolderName & "\*"" -y", @TempDir, @SW_HIDE)
+	$sRet = RunWait("cmd.exe /c 7za.exe x """ & $sDriverZipPath & """ -o""" & $sSystemDrive & "\Drivers\" & $sSrcFolderName & "\*"" -y", @TempDir, @SW_HIDE)
 
 	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Completed extracting driver """ & $aDriverZips[$i] & """ to (" & $sDriverExtractFolder & "): " & $sRet)
 	$sCurrentStep = $sCurrentStep + 1
