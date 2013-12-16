@@ -1,0 +1,28 @@
+;================================================================================================================
+; Changelog
+;================================================================================================================
+; 1.0 - Dec 12 2012
+;	Added step to delete (pop) Optional Drivers from DriverZips Array.
+; 1.1 - Dec 21 2012
+;	Added PNPCheck function, corrected count of elements in driver array.
+;	Added TASKKILL call at end of script to close CmdWindowEvery3Sec.exe
+;	Updated .ICOs for both HideCmdWindowEvery3Sec.exe and install.exe
+;	Also compiled code with PanaConsulting icon.
+;	Cleaned up Progress Bar Display by adding Bundle Name and removing File Extension
+; 1.2 - Jan 31 2013
+;	Changed "##" o pre-fix used for skipped application/driver installs.
+; 1.2.1 - Feb 4 2013
+;	Changed script to dymanically search for Sub-Folder name and not rely on "src\" name.
+; 1.2.2 - Apr 17, 2013
+;	Changed all C:\Windows strings to @WindowsDir
+; 1.2.3 - May 14, 2013
+;	Set install.exe to perform an ArraySort on the $aDriverZips and not rely on the OS for correct sorting.
+; 1.2.4 - May 29, 2013
+;	Shortened the name of each step displayed to 35 characters.
+;	Set the current install to skip if its already been run in the past.
+; 1.3 - Dec 16, 2013
+;	Changed C:\ calls to SystemDrive
+;	Added call to DLL to disable 64-Bit Redirection
+;	Added ability to redirect log file to alternate Directory using argument 1
+;	Added log redirection within PInstalls as well.  Add "%1" within log for log folder redirection.
+;================================================================================================================

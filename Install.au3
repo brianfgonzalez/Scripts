@@ -42,6 +42,7 @@ FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEver
 ;	Changed C:\ calls to SystemDrive
 ;	Added call to DLL to disable 64-Bit Redirection
 ;	Added ability to redirect log file to alternate Directory using argument 1
+;	Added log redirection within PInstalls as well.  Add "%1" within log for log folder redirection.
 ;================================================================================================================
 ; AutoIt Includes
 ;================================================================================================================
@@ -66,13 +67,19 @@ Dim $aPNPIDContents[100] ;Array used when checking through the PNPID txt file
 
 ; Change LogFile path if argument is passed
 If $cmdLine[0] > 0 Then
-	$sLogFilePath = $cmdLine[1]
+	$sLogFolderPath = $cmdLine[1]
+	If StringRight($sLogFolderPath, 1) = "\" Then
+		$sLogFolderPath = FileGetShortName(StringLeft($sLogFolderPath, StringLen($sLogFolderPath) - 1))
+	EndIf
+	If NOT FileExists($sLogFolderPath) Then
+		RunWait("cmd.exe /c md " & $sLogFolderPath, @ScriptDir, @SW_HIDE)
+	EndIf
 Else
-	$sLogFilePath = @WindowsDir & "\Temp"
+	$sLogFolderPath = @WindowsDir & "\Temp"
 EndIf
 
 ; Create LogFile
-$sLogFile = FileOpen($sLogFilePath & "\PanaInstall_" & @YEAR & @MON & @MDAY & "_" & @HOUR & @MIN & ".log", 1)
+$sLogFile = FileOpen($sLogFolderPath & "\PanaInstall_" & @YEAR & @MON & @MDAY & "_" & @HOUR & @MIN & ".log", 1)
 If $sLogFile = -1 Then
 	MsgBox(0, "Error", "Unable to access/create log file.")
 	Exit
@@ -195,16 +202,16 @@ For $i = 1 To $aDriverZips[0]
 		FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- PNPID file found, beginning WMI check for Device: " & $aPNPIDContents[1])
 		If PNPCheck($aPNPIDContents[1]) Then
 			FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- PNP Check returned successful for PNPID:" & $aPNPIDContents[1] & ": ")
-			FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Beginning to execute the PInstall.bat from extracted driver as PNPID Check returned successfull (" & $sDriverExtractFolder & "): ")
-			$sRet = RunWait("cmd.exe /c pinstall.bat", $sDriverExtractFolder, @SW_HIDE)
+			FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Beginning to execute the PInstall.bat " & $sLogFolderPath & " from extracted driver as PNPID Check returned successfull (" & $sDriverExtractFolder & "): ")
+			$sRet = RunWait("cmd.exe /c pinstall.bat " & $sLogFolderPath, $sDriverExtractFolder, @SW_HIDE)
 		Else
 			FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Skipping install as PNPID Check returned Failed (" & $sDriverExtractFolder & "): ")
 		EndIf
 	Else
-		FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Beginning to execute the PInstall.bat from extracted driver (" & $sDriverExtractFolder & "): ")
+		FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Beginning to execute the PInstall.bat " & $sLogFolderPath & " from extracted driver (" & $sDriverExtractFolder & "): ")
 
 		; Execution of PInsall
-		$sRet = RunWait("cmd.exe /c pinstall.bat", $sDriverExtractFolder, @SW_HIDE)
+		$sRet = RunWait("cmd.exe /c pinstall.bat " & $sLogFolderPath, $sDriverExtractFolder, @SW_HIDE)
 	EndIf
 	$sCurrentStep = $sCurrentStep + 1
 	$sCurrentPercentComplete = fGrabPercentComplete($sCurrentStep)
