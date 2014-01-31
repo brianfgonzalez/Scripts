@@ -3,7 +3,7 @@
 #AutoIt3Wrapper_Outfile=Install.exe
 #AutoIt3Wrapper_Res_Comment=Contact imaging@us.panasonic.com for support.
 #AutoIt3Wrapper_Res_Description=OneClick Panasonic Toughbook Installer.
-#AutoIt3Wrapper_Res_Fileversion=1.3.1
+#AutoIt3Wrapper_Res_Fileversion=1.3.2
 #AutoIt3Wrapper_Res_LegalCopyright=Panasonic Corporation Of North America
 #AutoIt3Wrapper_Res_Language=1033
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
@@ -43,7 +43,7 @@ FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEver
 ;	Added call to DLL to disable 64-Bit Redirection
 ;	Added ability to redirect log file to alternate Directory using argument 1
 ;	Added log redirection within PInstalls as well.  Add "%1" within log for log folder redirection.
-; 1.3.1 - Dec 22, 2013
+; 1.3.2 - Dec 22, 2013
 ;	Set argument passed to PInstall to 2ND arg, as 1st is used in standard PInstalls already.
 ;================================================================================================================
 ; AutoIt Includes
@@ -59,7 +59,7 @@ FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEver
 ; Main Routine
 ;================================================================================================================
 AutoItSetOption("MustDeclareVars", 0)
-$sInstallVersion = "1.3"
+$sInstallVersion = "1.3.2"
 Dim $aPNPIDContents[100] ;Array used when checking through the PNPID txt file
 
 ;If Not IsAdmin() Then ; Verifies user is Admin
@@ -204,13 +204,13 @@ For $i = 1 To $aDriverZips[0]
 		FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- PNPID file found, beginning WMI check for Device: " & $aPNPIDContents[1])
 		If PNPCheck($aPNPIDContents[1]) Then
 			FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- PNP Check returned successful for PNPID:" & $aPNPIDContents[1] & ": ")
-			FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Beginning to execute the PInstall.bat " & $sLogFolderPath & " from extracted driver as PNPID Check returned successfull (" & $sDriverExtractFolder & "): ")
+			FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Beginning to execute the PInstall.bat """" " & $sLogFolderPath & " from extracted driver as PNPID Check returned successfull (" & $sDriverExtractFolder & "): ")
 			$sRet = RunWait("cmd.exe /c pinstall.bat """" " & $sLogFolderPath, $sDriverExtractFolder, @SW_HIDE)
 		Else
 			FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Skipping install as PNPID Check returned Failed (" & $sDriverExtractFolder & "): ")
 		EndIf
 	Else
-		FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Beginning to execute the PInstall.bat " & $sLogFolderPath & " from extracted driver (" & $sDriverExtractFolder & "): ")
+		FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Beginning to execute the PInstall.bat """" " & $sLogFolderPath & " from extracted driver (" & $sDriverExtractFolder & "): ")
 
 		; Execution of PInsall
 		$sRet = RunWait("cmd.exe /c pinstall.bat """" " & $sLogFolderPath, $sDriverExtractFolder, @SW_HIDE)

@@ -25,4 +25,6 @@
 ;	Added call to DLL to disable 64-Bit Redirection
 ;	Added ability to redirect log file to alternate Directory using argument 1
 ;	Added log redirection within PInstalls as well.  Add "%1" within log for log folder redirection.
+; 1.3.2 - Dec 22, 2013
+;	Set argument passed to PInstall to 2ND arg, as 1st is used in standard PInstalls already.
 ;================================================================================================================
