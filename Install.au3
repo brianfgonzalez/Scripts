@@ -3,11 +3,12 @@
 #AutoIt3Wrapper_Outfile=Install.exe
 #AutoIt3Wrapper_Res_Comment=Contact imaging@us.panasonic.com for support.
 #AutoIt3Wrapper_Res_Description=OneClick Panasonic Toughbook Installer.
-#AutoIt3Wrapper_Res_Fileversion=1.3.2
+#AutoIt3Wrapper_Res_Fileversion=1.3.3
 #AutoIt3Wrapper_Res_LegalCopyright=Panasonic Corporation Of North America
 #AutoIt3Wrapper_Res_Language=1033
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
 FileInstall("7za.exe", @WindowsDir & "\Temp\7za.exe", 1)
+FileInstall("logo.bmp", @WindowsDir & "\Temp\logo.bmp", 1)
 FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEvery3Sec.exe", 1)
 ;** AUT2EXE settings
 ;================================================================================================================
@@ -45,6 +46,8 @@ FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEver
 ;	Added log redirection within PInstalls as well.  Add "%1" within log for log folder redirection.
 ; 1.3.2 - Dec 22, 2013
 ;	Set argument passed to PInstall to 2ND arg, as 1st is used in standard PInstalls already.
+; 1.3.3 - Mar 4, 2014
+;	Added a Toughbook Logo to upper left hand corner.
 ;================================================================================================================
 ; AutoIt Includes
 ;================================================================================================================
@@ -59,7 +62,7 @@ FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEver
 ; Main Routine
 ;================================================================================================================
 AutoItSetOption("MustDeclareVars", 0)
-$sInstallVersion = "1.3.2"
+$sInstallVersion = "1.3.3"
 Dim $aPNPIDContents[100] ;Array used when checking through the PNPID txt file
 
 ;If Not IsAdmin() Then ; Verifies user is Admin
@@ -168,7 +171,8 @@ $oStepProgressBar = GUICtrlCreateProgress(100, 60, 490, 20, $PBS_SMOOTH)
 $oStepPercentLabel = GUICtrlCreateLabel("", 100, 85, 100, 20)
 $oStepProgressText = GUICtrlCreateLabel("", 200, 85, 385, 20, $SS_RIGHT)
 GUISetState()
-
+$sLogoFilePath = @WindowsDir & "\Temp\logo.bmp"
+SplashImageOn("", $sLogoFilePath, 100, 20, 0, 0, 1)
 fProgressBars(0, "Beginning Tbook Installer...", 0, "")
 
 ; Begin cycling through Driver ZIPs
@@ -228,6 +232,7 @@ $sRet = Run("TASKKILL /F /IM HideCmdWindowEvery3Sec.exe", @WindowsDir, @SW_HIDE)
 FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Killed HideCmdWindowEvery3Sec.exe Process): " & $sRet)
 
 GUIDelete($oGUI)
+SplashOff
 FileClose($sLogFile)
 
 ;================================================================================================================
