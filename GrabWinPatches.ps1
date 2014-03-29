@@ -5,4 +5,4 @@ $UpdateSearcher.Online = $true
 ($UpdateSearcher.Search("IsInstalled=1 and Type='Software'")).Updates | `
     %{ Write-Output @($_.Title) } | `
     Sort-Object $_.LastDeploymentChangeTime | `
-    Out-File -Append "D:\WinPatches.log"
+    Out-File -Append "F:\WendysWinPatches.log"
