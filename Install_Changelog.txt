@@ -27,4 +27,12 @@
 ;	Added log redirection within PInstalls as well.  Add "%1" within log for log folder redirection.
 ; 1.3.2 - Dec 22, 2013
 ;	Set argument passed to PInstall to 2ND arg, as 1st is used in standard PInstalls already.
+; 1.3.3 - Sep 25, 2014
+;	Deletes any produced .log files in the root of the SystemDrive.
+;	Added additional step to force copy of .ZIP before extraction.
+; 1.4 - Oct 3, 2014
+;	Set Install.exe to copy Changelog and also pull bundle version number.
+;	Adding logging for deleting of log files from root of SystemDrive.
+; 1.4.1 - Oct 6, 2014
+;	Corrected issue with Bundle-Changelog Copy script.
 ;================================================================================================================

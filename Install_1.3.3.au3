@@ -3,8 +3,7 @@
 #AutoIt3Wrapper_Outfile=Install.exe
 #AutoIt3Wrapper_Res_Comment=Contact imaging@us.panasonic.com for support.
 #AutoIt3Wrapper_Res_Description=OneClick Panasonic Toughbook Installer.
-#AutoIt3Wrapper_Res_Fileversion=1.4.3
-$sInstallVersion = "1.4.3"
+#AutoIt3Wrapper_Res_Fileversion=1.3.3
 #AutoIt3Wrapper_Res_LegalCopyright=Panasonic Corporation Of North America
 #AutoIt3Wrapper_Res_Language=1033
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
@@ -15,7 +14,7 @@ FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEver
 ; Panasonic Toughbook Parent Script
 ;  By Brian Gonzalez
 ;
-; Purpose: Installs all drivers from the first discovered subfolder using
+; Purpose: Installs all drivers from "src\" subfolder using
 ;	the PInstall.bat scripts.
 ;================================================================================================================
 ; Changelog
@@ -49,19 +48,6 @@ FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEver
 ; 1.3.3 - Sep 25, 2014
 ;	Deletes any produced .log files in the root of the SystemDrive.
 ;	Added additional step to force copy of .ZIP before extraction.
-; 1.4 - Oct 3, 2014
-;	Set Install.exe to copy Changelog and also pull bundle version number.
-;	Adding logging for deleting of log files from root of SystemDrive.
-; 1.4.1 - Oct 6, 2014
-;	Corrected issue with Bundle-Changelog Copy script.
-; 1.4.2 - Oct 7, 2014
-;	Added Bundle Version to Install Header, and Log File.
-;	Added full path to log file for .ZIP being extracted.
-;	Reset the Bottom Progress Bars after each copy if complete.
-;	Output install86 and install64 EXEs.
-;	Set Install.exe to kill BDDRun.exe when complete. To fix BDDRun getting hung.
-; 1.4.3 - Oct 8, 2014
-;	Re-Enabled 64Bit Re-Direction.
 ;================================================================================================================
 ; AutoIt Includes
 ;================================================================================================================
@@ -76,6 +62,7 @@ FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEver
 ; Main Routine
 ;================================================================================================================
 AutoItSetOption("MustDeclareVars", 0)
+$sInstallVersion = "1.3.3"
 Dim $aPNPIDContents[100] ;Array used when checking through the PNPID txt file
 Local $StartTimer = TimerInit()
 
@@ -121,27 +108,8 @@ $sSystemDrive = EnvGet("systemdrive"); Sets the System Drive for the Customer Co
 DllCall("kernel32.dll", "int", "Wow64DisableWow64FsRedirection", "int", 1)
 FileWriteLine($sLogFile, "Disabled 64Bit Redirection via DLL call.")
 
-; Copy Changelogs local and pull bundle version number from "CurrentVersion=" in bundle_changelog.txt file
-FileCopy(@ScriptDir & "\*.txt", $sSystemDrive & "\Drivers\", 8)
-If FileExists($sSystemDrive & "\Drivers\Bundle_Changelog.txt") Then
-	Local $file = FileOpen($sSystemDrive & "\Drivers\Bundle_Changelog.txt", 0)
-	; Read in lines of text until the EOF is reached
-	While 1
-		Local $line = FileReadLine($file)
-		If @error = -1 Then ExitLoop
-		;MsgBox(0, "Line read:", $line)
-		If StringInStr($line, "CurrentVersion") Then
-			$sBundleVersion = StringReplace(StringReplace($line, "CurrentVersion=", ""), " ", "")
-			ExitLoop
-		EndIf
-	WEnd
-Else
-	$sBundleVersion = "Not Found"
-EndIf
-
 ; Add more information to the log file
 FileWriteLine($sLogFile, "Beginning to Process Bundle Name: " & $sSrcFolderName)
-FileWriteLine($sLogFile, "Bundle Version: " & $sBundleVersion)
 FileWriteLine($sLogFile, "Script Version: " & $sInstallVersion)
 FileWriteLine($sLogFile, "=========================================")
 
@@ -195,7 +163,7 @@ $sCurrentStep = 0
 $sCurrentPercentComplete = fGrabPercentComplete(0)
 
 ; Create ProgressBar GUI
-$oGUI = GUICreate("Panasonic Driver Installer (Install v" & $sInstallVersion & ") (Bundle Version v" & $sBundleVersion & ")", 600, 130, 0, 0, $WS_BORDER, $WS_EX_TOPMOST) ;width, height, top, left
+$oGUI = GUICreate("Panasonic Driver Installer v" & $sInstallVersion, 600, 130, 0, 0, $WS_BORDER, $WS_EX_TOPMOST) ;width, height, top, left
 $oCompleteProgressLabel = GUICtrlCreateLabel("Complete Process:", 5, 10, 100, 20) ;left, top, width, height
 $oCompleteProgressBar = GUICtrlCreateProgress(100, 5, 490, 20, $PBS_SMOOTH)
 $oCompletePercentLabel = GUICtrlCreateLabel("", 100, 30, 100, 20)
@@ -219,13 +187,11 @@ For $i = 1 To $aDriverZips[0]
 	; fProgressBars args: complete percent, text, step percent, text
     $sCurrentStep = $sCurrentStep + 1
 	$sCurrentPercentComplete = fGrabPercentComplete($sCurrentStep)
-	fProgressBars($sCurrentPercentComplete, "Copying " & $i & " of " & $aDriverZips[0] & " packages in " & $sSrcFolderName & " bundle.", 0, "Copying " & $sDriverName)
-	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Beggining to copy driver zip """ & $sDriverZipPath & """ to (" & @TempDir & "\" & $sSrcFolderName & "\)")
-	;MsgBox(0, "", FileGetLongName(@TempDir & "\" & $sSrcFolderName & "\"))
-	$ret = FileCopy($sDriverZipPath, (@TempDir & "\" & $sSrcFolderName & "\"), 9)
 	fProgressBars($sCurrentPercentComplete, "Copying " & $i & " of " & $aDriverZips[0] & " packages in " & $sSrcFolderName & " bundle.", 100, "Copying " & $sDriverName)
-	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Completed copying driver zip """ & $sDriverZipPath & """ to (" & @TempDir & "\" & $sSrcFolderName & "\):" & $ret)
-	Sleep(750)
+	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Beggining to copy driver zip """ & $aDriverZips[$i] & """ to (" & @TempDir & "\" & $sSrcFolderName & "\)")
+	;MsgBox(0, "", FileGetLongName(@TempDir & "\" & $sSrcFolderName & "\"))
+	FileCopy($sDriverZipPath, (@TempDir & "\" & $sSrcFolderName & "\"), 9)
+	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Completed copying driver zip """ & $aDriverZips[$i] & """ to (" & @TempDir & "\" & $sSrcFolderName & "\)")
 Next
 
 ; Begin cycling through Driver ZIPs
@@ -241,14 +207,15 @@ For $i = 1 To $aDriverZips[0]
 	If StringLen($sDriverName) > 35 Then
 		$sDriverName = StringLeft($sDriverName, 35) ;If name is longer than 8 characters, shorten the name.
 	EndIf
-	FileWriteLine($sLogFile, "Processing " & $i & " of " & $aDriverZips[0] & "... (" & @TempDir & "\" & $sSrcFolderName & "\" & $aDriverZips[$i] & ")")
+	FileWriteLine($sLogFile, "Processing " & $i & " of " & $aDriverZips[0] & "... (" & $aDriverZips[$i] & ")")
 
 	$sDriverExtractFolder = $sSystemDrive & "\Drivers\" & $sSrcFolderName & "\" & StringTrimRight($aDriverZips[$i], 4) ; Specify extract folder, driver name without extension
 	$sCurrentStep = $sCurrentStep + 1
 	$sCurrentPercentComplete = fGrabPercentComplete($sCurrentStep)
 	fProgressBars($sCurrentPercentComplete, "Processing " & $i & " of " & $aDriverZips[0] & " packages in " & $sSrcFolderName & " bundle.", 33, "Extracting " & $sDriverName)
-	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Beggining to extract driver """ & $aDriverZips[$i] & """ from (" & $sDriverZipPath & ")")
+	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Beggining to extract driver """ & $aDriverZips[$i] & """ to (" & $sDriverExtractFolder & ")")
 	$sRet = RunWait("cmd.exe /c 7za.exe x """ & $sDriverZipPath & """ -o""" & $sSystemDrive & "\Drivers\" & $sSrcFolderName & "\*"" -y", @TempDir, @SW_HIDE)
+
 	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Completed extracting driver """ & $aDriverZips[$i] & """ to (" & $sDriverExtractFolder & "): " & $sRet)
 	$sCurrentStep = $sCurrentStep + 1
 	$sCurrentPercentComplete = fGrabPercentComplete($sCurrentStep)
@@ -258,19 +225,16 @@ For $i = 1 To $aDriverZips[0]
 		FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- PNPID file found, beginning WMI check for Device: " & $aPNPIDContents[1])
 		If PNPCheck($aPNPIDContents[1]) Then
 			FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- PNP Check returned successful for PNPID:" & $aPNPIDContents[1] & ": ")
-			FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Beginning to execute the PInstall.bat from extracted driver as PNPID Check returned successfull (" & $sDriverExtractFolder & "): ")
-			$sCmd = "cmd.exe /c pinstall.bat """" """ & $sLogFolderPath & """"
-			FileWriteLine($sLogFile, "Executing: """ & $sCmd & """" & ", from the following Directory: " & $sDriverExtractFolder)
-			$sRet = RunWait($sCmd, $sDriverExtractFolder, @SW_HIDE)
+			FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Beginning to execute the PInstall.bat """" " & $sLogFolderPath & " from extracted driver as PNPID Check returned successfull (" & $sDriverExtractFolder & "): ")
+			$sRet = RunWait("cmd.exe /c pinstall.bat """" " & $sLogFolderPath, $sDriverExtractFolder, @SW_HIDE)
 		Else
 			FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Skipping install as PNPID Check returned Failed (" & $sDriverExtractFolder & "): ")
 		EndIf
 	Else
-		FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Beginning to execute the PInstall.bat from extracted driver (" & $sDriverExtractFolder & "): ")
-		$sCmd = "cmd.exe /c pinstall.bat """" """ & $sLogFolderPath & """"
-		FileWriteLine($sLogFile, "Executing: """ & $sCmd & """" & ", from the following Directory: " & $sDriverExtractFolder)
+		FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Beginning to execute the PInstall.bat """" " & $sLogFolderPath & " from extracted driver (" & $sDriverExtractFolder & "): ")
+
 		; Execution of PInsall
-		$sRet = RunWait($sCmd, $sDriverExtractFolder, @SW_HIDE)
+		$sRet = RunWait("cmd.exe /c pinstall.bat """" " & $sLogFolderPath, $sDriverExtractFolder, @SW_HIDE)
 	EndIf
 	$sCurrentStep = $sCurrentStep + 1
 	$sCurrentPercentComplete = fGrabPercentComplete($sCurrentStep)
@@ -292,17 +256,15 @@ If NOT @error = 1 Then
 	   ;_ArrayDisplay($t)
 	   Local $Date = $t[0] & '/' & $t[1] & '/' & $t[2] & ' ' & $t[3] & ':' & $t[4] & ':' & $t[5]
 	   If (_DateDiff('s', $Date, _NowCalc()) <= $AmountOfSecondsRun) Then
-		   FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Deleting logfile (" & $TempLogFilePath & "): " & $sRet)
 		   FileDelete($TempLogFilePath)
 	   EndIf
    Next
 EndIf
 
 FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Script Execution is complete.")
-$sRet = Run("TASKKILL /F /T /IM HideCmdWindowEvery3Sec.exe", @WindowsDir, @SW_HIDE)
+$sRet = Run("TASKKILL /F /IM HideCmdWindowEvery3Sec.exe", @WindowsDir, @SW_HIDE)
 FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Killed HideCmdWindowEvery3Sec.exe Process): " & $sRet)
-$sRet = Run("TASKKILL /F /T /IM BDDRun.exe", @WindowsDir, @SW_HIDE)
-;FileClose($sLogFile)
+FileClose($sLogFile)
 
 ;================================================================================================================
 ; Functions and Sub Routines
