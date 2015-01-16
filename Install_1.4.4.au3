@@ -3,9 +3,8 @@
 #AutoIt3Wrapper_Outfile=Install.exe
 #AutoIt3Wrapper_Res_Comment=Contact imaging@us.panasonic.com for support.
 #AutoIt3Wrapper_Res_Description=OneClick Panasonic Toughbook Installer.
-#AutoIt3Wrapper_Res_Fileversion=1.4.5
-$sInstallVersion = "1.4.5"
-$sLogFolderPath = @WindowsDir & "\Temp"
+#AutoIt3Wrapper_Res_Fileversion=1.4.4
+$sInstallVersion = "1.4.4"
 #AutoIt3Wrapper_Res_LegalCopyright=Panasonic Corporation Of North America
 #AutoIt3Wrapper_Res_Language=1033
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
@@ -65,9 +64,6 @@ FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEver
 ;	Re-Enabled 64Bit Re-Direction.
 ; 1.4.4 - Nov 5, 2014
 ;	Added support to pass argument to Kill BDD.
-; 1.4.5 - Nov 5, 2014
-;	- Removed support for changing logging path as only 1 argument is allowed via -sp1 command.
-;	- Set Script to Delete Driver ZIP files after copying them local.
 ;================================================================================================================
 ; AutoIt Includes
 ;================================================================================================================
@@ -90,9 +86,28 @@ Local $StartTimer = TimerInit()
 ;	Exit
 ;EndIf
 
-; Sets the $sBDDKill variable based on the 2nd argument.
+; Change LogFile path if argument is passed
 If $cmdLine[0] > 0 Then
-	If $cmdLine[1] = 1 Then
+	MsgBox(0, "", "Argument 1: " & $cmdLine[1])
+	$sLogFolderPath = StringStripWS($cmdLine[1], 3)
+	If $sLogFolderPath = "" Then
+		$sLogFolderPath = @WindowsDir & "\Temp"
+	Else
+		If StringRight($sLogFolderPath, 1) = "\" Then
+			$sLogFolderPath = FileGetShortName(StringLeft($sLogFolderPath, StringLen($sLogFolderPath) - 1))
+		EndIf
+		If NOT FileExists($sLogFolderPath) Then
+			RunWait("cmd.exe /c md " & $sLogFolderPath, @ScriptDir, @SW_HIDE)
+		EndIf
+	EndIf
+Else
+	$sLogFolderPath = @WindowsDir & "\Temp"
+EndIf
+
+; Sets the $sBDDKill variable based on the 2nd argument.
+If $cmdLine[0] > 1 Then
+MsgBox(0, "", "Argument 2: " & $cmdLine[2])
+	If $cmdLine[2] = 1 Then
 		$sBDDKill = "True"
 	Else
 		$sBDDKill = "False"
@@ -228,8 +243,7 @@ For $i = 1 To $aDriverZips[0]
 	;MsgBox(0, "", FileGetLongName(@TempDir & "\" & $sSrcFolderName & "\"))
 	$ret = FileCopy($sDriverZipPath, (@TempDir & "\" & $sSrcFolderName & "\"), 9)
 	fProgressBars($sCurrentPercentComplete, "Copying " & $i & " of " & $aDriverZips[0] & " packages in " & $sSrcFolderName & " bundle.", 100, "Copying " & $sDriverName)
-	$ret = FileDelete($sDriverZipPath)
-	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Deleted driver zip """ & $sDriverZipPath & """:" & $ret)
+	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Completed copying driver zip """ & $sDriverZipPath & """ to (" & @TempDir & "\" & $sSrcFolderName & "\):" & $ret)
 	Sleep(750)
 Next
 
@@ -255,8 +269,6 @@ For $i = 1 To $aDriverZips[0]
 	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Beggining to extract driver """ & $aDriverZips[$i] & """ from (" & $sDriverZipPath & ")")
 	$sRet = RunWait("cmd.exe /c 7za.exe x """ & $sDriverZipPath & """ -o""" & $sSystemDrive & "\Drivers\" & $sSrcFolderName & "\*"" -y", @TempDir, @SW_HIDE)
 	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Completed extracting driver """ & $aDriverZips[$i] & """ to (" & $sDriverExtractFolder & "): " & $sRet)
-	$ret = FileDelete($sDriverZipPath)
-	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Deleted driver zip """ & $sDriverZipPath & """:" & $ret)
 	$sCurrentStep = $sCurrentStep + 1
 	$sCurrentPercentComplete = fGrabPercentComplete($sCurrentStep)
 	fProgressBars($sCurrentPercentComplete, "Processing " & $i & " of " & $aDriverZips[0] & " packages in " & $sSrcFolderName & " bundle.", 66, "Installing " & $sDriverName)
@@ -307,12 +319,12 @@ EndIf
 
 FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Script Execution is complete.")
 $sRet = Run("TASKKILL /F /T /IM HideCmdWindowEvery3Sec.exe", @WindowsDir, @SW_HIDE)
-FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Killed HideCmdWindowEvery3Sec.exe Process: " & $sRet)
+FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Killed HideCmdWindowEvery3Sec.exe Process): " & $sRet)
 If $sBDDKill = "True" Then
-	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Killing BDDRun.exe Process")
+	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Killing BDDRun.exe Process)")
 	$sRet = Run("TASKKILL /F /T /IM BDDRun.exe", @WindowsDir, @SW_HIDE)
 EndIf
-FileClose($sLogFile)
+;FileClose($sLogFile)
 
 ;================================================================================================================
 ; Functions and Sub Routines
