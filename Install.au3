@@ -3,8 +3,8 @@
 #AutoIt3Wrapper_Outfile=Install.exe
 #AutoIt3Wrapper_Res_Comment=Contact imaging@us.panasonic.com for support.
 #AutoIt3Wrapper_Res_Description=OneClick Panasonic Toughbook Installer.
-#AutoIt3Wrapper_Res_Fileversion=1.4.5
-$sInstallVersion = "1.4.5"
+#AutoIt3Wrapper_Res_Fileversion=1.4.6
+$sInstallVersion = "1.4.6"
 $sLogFolderPath = @WindowsDir & "\Temp"
 #AutoIt3Wrapper_Res_LegalCopyright=Panasonic Corporation Of North America
 #AutoIt3Wrapper_Res_Language=1033
@@ -68,6 +68,8 @@ FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEver
 ; 1.4.5 - Nov 5, 2014
 ;	- Removed support for changing logging path as only 1 argument is allowed via -sp1 command.
 ;	- Set Script to Delete Driver ZIP files after copying them local.
+; 1.4.6 - Feb 20, 2015
+;	- Set up delete routine to only occur if "temp" is found in ZipPath.
 ;================================================================================================================
 ; AutoIt Includes
 ;================================================================================================================
@@ -228,8 +230,10 @@ For $i = 1 To $aDriverZips[0]
 	;MsgBox(0, "", FileGetLongName(@TempDir & "\" & $sSrcFolderName & "\"))
 	$ret = FileCopy($sDriverZipPath, (@TempDir & "\" & $sSrcFolderName & "\"), 9)
 	fProgressBars($sCurrentPercentComplete, "Copying " & $i & " of " & $aDriverZips[0] & " packages in " & $sSrcFolderName & " bundle.", 100, "Copying " & $sDriverName)
-	$ret = FileDelete($sDriverZipPath)
-	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Deleted driver zip """ & $sDriverZipPath & """:" & $ret)
+	If Not StringInStr($sDriverZipPath, "temp") Then
+		$ret = FileDelete($sDriverZipPath)
+		FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Deleted driver zip """ & $sDriverZipPath & """:" & $ret)
+	EndIf
 	Sleep(750)
 Next
 
