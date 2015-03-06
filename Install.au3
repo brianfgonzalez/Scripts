@@ -3,8 +3,8 @@
 #AutoIt3Wrapper_Outfile=Install.exe
 #AutoIt3Wrapper_Res_Comment=Contact imaging@us.panasonic.com for support.
 #AutoIt3Wrapper_Res_Description=OneClick Panasonic Toughbook Installer.
-#AutoIt3Wrapper_Res_Fileversion=1.4.6
-$sInstallVersion = "1.4.6"
+#AutoIt3Wrapper_Res_Fileversion=1.4.7
+$sInstallVersion = "1.4.7"
 $sLogFolderPath = @WindowsDir & "\Temp"
 #AutoIt3Wrapper_Res_LegalCopyright=Panasonic Corporation Of North America
 #AutoIt3Wrapper_Res_Language=1033
@@ -70,6 +70,9 @@ FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEver
 ;	- Set Script to Delete Driver ZIP files after copying them local.
 ; 1.4.6 - Feb 20, 2015
 ;	- Set up delete routine to only occur if "temp" is found in ZipPath.
+; 1.4.7 - Mar 04, 2015
+;	- Corrected logic used to delete zippath.
+;	- Set script to delete 7za.exe and HideCmdWindowEvery3Sec.exe at end of script.
 ;================================================================================================================
 ; AutoIt Includes
 ;================================================================================================================
@@ -230,7 +233,8 @@ For $i = 1 To $aDriverZips[0]
 	;MsgBox(0, "", FileGetLongName(@TempDir & "\" & $sSrcFolderName & "\"))
 	$ret = FileCopy($sDriverZipPath, (@TempDir & "\" & $sSrcFolderName & "\"), 9)
 	fProgressBars($sCurrentPercentComplete, "Copying " & $i & " of " & $aDriverZips[0] & " packages in " & $sSrcFolderName & " bundle.", 100, "Copying " & $sDriverName)
-	If Not StringInStr($sDriverZipPath, "temp") Then
+	; Delete ZipPath if the word "temp" is found anywhere in pathname.
+	If StringInStr($sDriverZipPath, "temp") Then
 		$ret = FileDelete($sDriverZipPath)
 		FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Deleted driver zip """ & $sDriverZipPath & """:" & $ret)
 	EndIf
@@ -312,6 +316,9 @@ EndIf
 FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Script Execution is complete.")
 $sRet = Run("TASKKILL /F /T /IM HideCmdWindowEvery3Sec.exe", @WindowsDir, @SW_HIDE)
 FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Killed HideCmdWindowEvery3Sec.exe Process: " & $sRet)
+; Delete 7za.exe and HideCmdWindowEvery3Sec.exe
+FileDelete($s7ZAPath)
+FileDelete($sHideCmdWindowPath)
 If $sBDDKill = "True" Then
 	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Killing BDDRun.exe Process")
 	$sRet = Run("TASKKILL /F /T /IM BDDRun.exe", @WindowsDir, @SW_HIDE)
