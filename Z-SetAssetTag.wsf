@@ -1,0 +1,88 @@
+<job id="Z-SetAssetTag.wsf"> 
+<script language="VBScript" src="..\..\Scripts\ZTIUtility.vbs"/> 
+<script language="VBScript"> 
+ 
+' //*************************************************************************** 
+' // ***** Script Header *****
+' // 
+' // Solution: Solution Accelerator for Microsoft Deployment 
+' // File: Z-SetAssetTag.wsf
+' // 
+' // Purpose: Sets AssetTag to the ComputerName for re-imaging purposes.
+' // 
+' // Usage: cscript Z-SetAssetTag.wsf [/debug:true] 
+' // 
+' // Panasonic Build Version: 1.0
+' // Customer History: 
+' // Mar 10, 2016 - First Build.
+' // 
+' // ***** End Header *****
+' //*************************************************************************** 
+ 
+'//---------------------------------------------------------------------------- 
+'// 
+'// Global constant and variable declarations 
+'// 
+'//---------------------------------------------------------------------------- 
+'Option Explicit
+Dim iRetVal 
+'//---------------------------------------------------------------------------- 
+'// End declarations 
+'//---------------------------------------------------------------------------- 
+ 
+'//---------------------------------------------------------------------------- 
+'// Main routine 
+'//---------------------------------------------------------------------------- 
+'On Error Resume Next 
+iRetVal = ZTIProcess 
+ProcessResults iRetVal 
+On Error Goto 0 
+ 
+'//--------------------------------------------------------------------------- 
+'// 
+'// Function: ZTIProcess() 
+'// 
+'// Input: None 
+'// 
+'// Return: Success - 0 
+'// Failure - non-zero 
+'// 
+'// Purpose: Perform main ZTI processing 
+'// 
+'//--------------------------------------------------------------------------- 
+Function ZTIProcess() 
+    iRetVal = Success 
+    ZTIProcess = iRetval 
+
+    '/ Create text file containing the ComputerName
+    sCNameFilePath = oFileHandling.GetTempFileEx("txt")
+    oLogging.CreateEntry "Z-SetAssetTag.wsf: Computername file set to """ & sCNameFilePath & """.", LogTypeInfo
+    Set oCNameFile = oFSO.CreateTextFile(sCNameFilePath,True)
+    oCNameFile.Write oNetwork.ComputerName
+    oLogging.CreateEntry "Z-SetAssetTag.wsf: Wrote " & oNetwork.ComputerName & "to file.  Return: " & Err.number, LogTypeInfo
+    oCNameFile.Close
+
+	'// Execute the Assettag.exe with the new text file
+	sAssetTagFilePath = oUtility.ScriptDir & "\assettag.exe"
+	If NOT oFSO.FileExists(sAssetTagFilePath) then
+		oLogging.CreateEntry "Z-SetAssetTag.wsf: " & sAssetTagFilePath & " was not found, unable to execute.", LogTypeError
+		ZTIProcess = Failure
+		Exit Function
+	End if
+
+	sCmd = sAssetTagFilePath & " /Y /F:" & sCNameFilePath
+	oLogging.CreateEntry "Z-SetAssetTag.wsf: Running: " & sCmd, LogTypeInfo
+	iRetVal = oUtility.RunWithHeartbeat(sCmd)
+	
+	If (iRetVal = 0) or (iRetVal = 3010) then
+		ZTIProcess = Success 
+	Else 
+		ZTIProcess = Failure
+	End If
+	
+	oLogging.CreateEntry "Z-SetAssetTag.wsf: Execute AssetTag.exe: Return code from command = " & iRetVal, LogTypeInfo
+	oLogging.CreateEntry "Z-SetAssetTag.wsf: Execute AssetTag.exe: Complete", LogTypeInfo
+
+End Function
+</script> 
+</job>
