@@ -1,0 +1,14 @@
+boot\bcd
+boot\boot.sdi
+boot\bootfix.bin
+boot\bootsect.exe
+boot\etfsboot.com
+boot\memtest.efi
+boot\memtest.exe
+boot\en-us\bootsect.exe.mui
+boot\fonts\chs_boot.ttf
+boot\fonts\cht_boot.ttf
+boot\fonts\jpn_boot.ttf
+boot\fonts\kor_boot.ttf
+boot\fonts\wgl4_boot.ttf
+sources\boot.wim

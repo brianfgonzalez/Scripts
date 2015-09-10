@@ -1,0 +1,1 @@
+wpeutil shutdown
