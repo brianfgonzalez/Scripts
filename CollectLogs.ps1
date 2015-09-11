@@ -3,6 +3,8 @@ Version: 1.1
 ChangeLog:
 	- September 10, 2015 : First revision of script.
     - Moved function code above function call.
+    1.1
+    - Switched to using [System.IO.DriveInfo]::getdrives() instead of gwmi
 #>
 function fReRunPrompt{
 $sRet = [Microsoft.VisualBasic.Interaction]::MsgBox("Would you like to rerun the script?",'YesNo,Question', "Rerun script prompt")
@@ -23,10 +25,10 @@ function fMain
 #######################################################################################################################################################
 try
 {
-    $oAllUSBDrive = (Get-WmiObject -Query "SELECT * FROM Win32_LogicalDisk WHERE DriveType LIKE 2")[0]
+    $oAllUSBDrive = ([System.IO.DriveInfo]::getdrives() | ?{ $_.DriveType -eq "Removable"} | Sort-Object -Descending TotalSize)[0]
     if ($oAllUSBDrive -eq $null)
     {
-        $oAllUSBDrive = (Get-WmiObject -Query "SELECT * FROM Win32_LogicalDisk WHERE DriveType LIKE 2")
+        $oAllUSBDrive = ([System.IO.DriveInfo]::getdrives() | ?{ $_.DriveType -eq "Removable"} | Sort-Object -Descending TotalSize)
     }
     $sUSBDriveLetter = $oAllUSBDrive.Name
 }
@@ -42,8 +44,8 @@ catch
 #######################################################################################################################################################
 try
 {
-    $oLocalLargestHDD = (Get-WmiObject -Query "SELECT * FROM Win32_LogicalDisk WHERE DriveType LIKE 3" | Sort-Object -Descending Size)[0]
-    If ($oLocalLargestHDD.Size -gt 100000000)
+    $oLocalLargestHDD = ([System.IO.DriveInfo]::getdrives() | ?{ $_.DriveType -eq "Fixed"} | Sort-Object -Descending TotalSize)[0]
+    If ($oLocalLargestHDD.TotalSize -gt 100000000)
     {
         $sHDDDriveLetter = $oLocalLargestHDD.Name
     } else {
@@ -64,14 +66,14 @@ catch
 # Create folder on USB media named with DATE and TIME stamp information
 #######################################################################################################################################################
 $sDateFormat = (Get-Date -format "yyyy-M-d_HHmm")
-$sLogFolderPath = $sUSBDriveLetter+"\"+$sDateFormat
+$sLogFolderPath = "{0}{1}" -f $sUSBDriveLetter, $sDateFormat
 New-Item -type Directory -path $sLogFolderPath -force
 
 # Copy all Windows or Deployment related log files on local HDD
 try
 {
-    $oLocalLargestHDD = (Get-WmiObject -Query "SELECT * FROM Win32_LogicalDisk WHERE DriveType LIKE 3" | Sort-Object -Descending Size)[0]
-    If ($oLocalLargestHDD.Size -gt 100000000)
+    $oLocalLargestHDD = ([System.IO.DriveInfo]::getdrives() | ?{ $_.DriveType -eq "Fixed"} | Sort-Object -Descending TotalSize)[0]
+    If ($oLocalLargestHDD.TotalSize -gt 100000000)
     {
         $sHDDDriveLetter = $oLocalLargestHDD.Name
     } else {
@@ -97,6 +99,9 @@ function fSearchAndCopy($aDirectories)
     $sInt=0
     foreach ($sDirectory in $aDirectories)
     {
+        $sDirectory = "{0}{1}" -f $sHDDDriveLetter, $sDirectory
+        $sMsg = "Copying {0}" -f $sDirectory
+        Write-Host $sMsg
         if ((Test-Path $sDirectory) -eq $true)
         {
             $sInt = $sInt + 1
@@ -111,12 +116,12 @@ function fSearchAndCopy($aDirectories)
 
 # Populate Directories Array
 $aDirectories =
-    @("$sHDDDriveLetter\Windows\Temp\DeploymentLogs",
-    "$sHDDDriveLetter\MININT\SMSOSD\OSDLOGS",
-    "$sHDDDriveLetter\Windows\System32\sysprep\Panther",
-    "$sHDDDriveLetter\Windows\Panther",
-    "$sHDDDriveLetter\_SMSTaskSequence",
-    "$sHDDDriveLetter\SMSTSLog")
+    @("Windows\Temp\DeploymentLogs",
+    "MININT\SMSOSD\OSDLOGS",
+    "Windows\System32\sysprep\Panther",
+    "Windows\Panther",
+    "_SMSTaskSequence",
+    "SMSTSLog")
 
 #Initiate folder copy routine
 try
@@ -124,7 +129,6 @@ try
     fSearchAndCopy($aDirectories)
     [System.Reflection.Assembly]::LoadWithPartialName("Microsoft.VisualBasic") | Out-Null
     [Microsoft.VisualBasic.Interaction]::MsgBox("Copy of content is complete.  Shutting down unit.",'OKOnly,Information', "Error encountered") | Out-Null
-    Start-Process "x:\windows\system32\wpeutil.exe" @('"shutdown"')
 }
 catch
 {
@@ -133,12 +137,10 @@ catch
     fReRunPrompt
     Exit
 }
+Start-Process "x:\windows\system32\wpeutil.exe" @('"shutdown"')
 
 
 }
-
-
-
 
 # Call fMain
 fMain
