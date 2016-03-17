@@ -3,8 +3,8 @@
 #AutoIt3Wrapper_Outfile=Install.exe
 #AutoIt3Wrapper_Res_Comment=Contact imaging@us.panasonic.com for support.
 #AutoIt3Wrapper_Res_Description=OneClick Panasonic Toughbook Installer.
-#AutoIt3Wrapper_Res_Fileversion=1.4.7
-$sInstallVersion = "1.4.7"
+#AutoIt3Wrapper_Res_Fileversion=1.5
+$sInstallVersion = "1.5"
 $sLogFolderPath = @WindowsDir & "\Temp"
 #AutoIt3Wrapper_Res_LegalCopyright=Panasonic Corporation Of North America
 #AutoIt3Wrapper_Res_Language=1033
@@ -73,6 +73,10 @@ FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEver
 ; 1.4.7 - Mar 04, 2015
 ;	- Corrected logic used to delete zippath.
 ;	- Set script to delete 7za.exe and HideCmdWindowEvery3Sec.exe at end of script.
+; 1.5 - Feb 22, 2016
+;	- Added /killBDD and /logPath arguments and set logfile to overwrite itself.
+;	- Added #RequireAdmin autoit function.
+;	- Set up the Bundle_Changelog and Install_Changelog to be purged when running fresh OCB.
 ;================================================================================================================
 ; AutoIt Includes
 ;================================================================================================================
@@ -83,6 +87,7 @@ FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEver
 #include <ProgressConstants.au3>
 #include <StaticConstants.au3>
 #include <WindowsConstants.au3>
+#RequireAdmin
 ;================================================================================================================
 ; Main Routine
 ;================================================================================================================
@@ -95,23 +100,64 @@ Local $StartTimer = TimerInit()
 ;	Exit
 ;EndIf
 
-; Sets the $sBDDKill variable based on the 2nd argument.
+
 If $cmdLine[0] > 0 Then
-	If $cmdLine[1] = 1 Then
-		$sBDDKill = "True"
+
+	If StringInStr($CmdLineRaw, "/BDDKill=1") Then
+		$sBDDKill = True
 	Else
-		$sBDDKill = "False"
+		$sBDDKill = False
 	EndIf
+
+	For $i = 1 To $cmdLine[0]
+		;MsgBox(0, "", "Full Argument: " & $cmdLine[$i])
+		If StringInStr($cmdLine[$i], "/?") Or _
+			StringInStr($cmdLine[$i], "-?") Or _
+			StringInStr($cmdLine[$i], "?") Or _
+			StringInStr($cmdLine[$i], "help") Then
+
+			MsgBox(64, "Help information", "use ""/logPath="" to re-route log file" & @CRLF & _
+				"use ""/killBDD=1"" to force OCB to kill BDD upon completion" & @CRLF & _
+				"for silent run with NO arguments.")
+			Exit
+		EndIf
+
+		If StringInStr($cmdLine[$i], "/logPath") Then
+			$splitArg = StringSplit($cmdLine[$i], "=")
+			If $splitArg[0] > 1 Then
+				If StringRight($splitArg[2],5)=".log""" Or _
+				StringRight($splitArg[2],4)=".log" Or _
+				StringRight($splitArg[2],5)=".txt""" Or _
+				StringRight($splitArg[2],4)=".txt" Then
+					$sLogFile = FileOpen($splitArg[2], 1)
+					If $sLogFile = -1 Then
+						MsgBox(16, "logPath error", "Unable to access/create log file (" & $splitArg[2] & ").")
+						Exit
+					EndIf
+				Else
+					PromptError("logPath", $splitArg[2])
+				EndIf
+		Else
+				PromptError("logPath")
+			EndIf
+		EndIf
+	Next
 Else
-	$sBDDKill = "False"
+	; Create LogFile
+	$sLogFile = FileOpen($sLogFolderPath & "\PanaInstall_" & @YEAR & @MON & @MDAY & "_" & @HOUR & @MIN & ".log", 2)
+	If $sLogFile = -1 Then
+		MsgBox(16, "logPath error", "Unable to access/create log file (" & $sLogFile & ").")
+		Exit
+	EndIf
 EndIf
 
-; Create LogFile
-$sLogFile = FileOpen($sLogFolderPath & "\PanaInstall_" & @YEAR & @MON & @MDAY & "_" & @HOUR & @MIN & ".log", 1)
-If $sLogFile = -1 Then
-	MsgBox(0, "Error", "Unable to access/create log file.")
-	Exit
-EndIf
+Func PromptError($error, $info="Not Specified")
+	Switch $error
+		Case "logPath"
+			MsgBox(16, "Error in logPath argument", "Syntex error in logPath,  please include full path to logfile (i.e. /logPath:""C:\MyLogs\MyLog.log"")" & @CRLF & "Specified logPath: " & $info)
+			Exit
+	EndSwitch
+EndFunc
 
 ; Tag LogFile with Start Date and Time
 FileWriteLine($sLogFile, "Start Date/Time Stamp: " & _Now())
@@ -131,6 +177,7 @@ DllCall("kernel32.dll", "int", "Wow64DisableWow64FsRedirection", "int", 1)
 FileWriteLine($sLogFile, "Disabled 64Bit Redirection via DLL call.")
 
 ; Copy Changelogs local and pull bundle version number from "CurrentVersion=" in bundle_changelog.txt file
+FileDelete($sSystemDrive & "\Drivers\*.txt")
 FileCopy(@ScriptDir & "\*.txt", $sSystemDrive & "\Drivers\", 8)
 If FileExists($sSystemDrive & "\Drivers\Bundle_Changelog.txt") Then
 	Local $file = FileOpen($sSystemDrive & "\Drivers\Bundle_Changelog.txt", 0)
