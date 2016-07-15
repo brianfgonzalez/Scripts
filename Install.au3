@@ -1,14 +1,15 @@
+#RequireAdmin
 #Region ;**** Directives created by AutoIt3Wrapper_GUI ****
 #AutoIt3Wrapper_Icon=tbicon.ico
 #AutoIt3Wrapper_Outfile=Install.exe
 #AutoIt3Wrapper_Res_Comment=Contact imaging@us.panasonic.com for support.
 #AutoIt3Wrapper_Res_Description=OneClick Panasonic Toughbook Installer.
-#AutoIt3Wrapper_Res_Fileversion=1.5
-$sInstallVersion = "1.5"
-$sLogFolderPath = @WindowsDir & "\Temp"
+#AutoIt3Wrapper_Res_Fileversion=1.5.3.0
 #AutoIt3Wrapper_Res_LegalCopyright=Panasonic Corporation Of North America
 #AutoIt3Wrapper_Res_Language=1033
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
+$sInstallVersion = "1.5.3"
+$sLogFolderPath = @WindowsDir & "\Temp"
 FileInstall("7za.exe", @WindowsDir & "\Temp\7za.exe", 1)
 FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEvery3Sec.exe", 1)
 ;** AUT2EXE settings
@@ -77,6 +78,12 @@ FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEver
 ;	- Added /killBDD and /logPath arguments and set logfile to overwrite itself.
 ;	- Added #RequireAdmin autoit function.
 ;	- Set up the Bundle_Changelog and Install_Changelog to be purged when running fresh OCB.
+; 1.5.1 - Mar 21, 2016
+; 1.5.2 - Apr 6, 2016
+;	- Commented out portion of install that skips existing install.zips.
+;	- Added logging for sBDDKill var.
+; 1.5.3 - Apr 22, 2016
+;	- Commented out code pertaining to KillBDD functionality, as it was causing errors.
 ;================================================================================================================
 ; AutoIt Includes
 ;================================================================================================================
@@ -87,7 +94,6 @@ FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEver
 #include <ProgressConstants.au3>
 #include <StaticConstants.au3>
 #include <WindowsConstants.au3>
-#RequireAdmin
 ;================================================================================================================
 ; Main Routine
 ;================================================================================================================
@@ -100,14 +106,7 @@ Local $StartTimer = TimerInit()
 ;	Exit
 ;EndIf
 
-
 If $cmdLine[0] > 0 Then
-
-	If StringInStr($CmdLineRaw, "/BDDKill=1") Then
-		$sBDDKill = True
-	Else
-		$sBDDKill = False
-	EndIf
 
 	For $i = 1 To $cmdLine[0]
 		;MsgBox(0, "", "Full Argument: " & $cmdLine[$i])
@@ -116,8 +115,10 @@ If $cmdLine[0] > 0 Then
 			StringInStr($cmdLine[$i], "?") Or _
 			StringInStr($cmdLine[$i], "help") Then
 
+			;MsgBox(64, "Help information", "use ""/logPath="" to re-route log file" & @CRLF & _
+			;	"use ""/killBDD=1"" to force OCB to kill BDD upon completion" & @CRLF & _
+			;	"for silent run with NO arguments.")
 			MsgBox(64, "Help information", "use ""/logPath="" to re-route log file" & @CRLF & _
-				"use ""/killBDD=1"" to force OCB to kill BDD upon completion" & @CRLF & _
 				"for silent run with NO arguments.")
 			Exit
 		EndIf
@@ -150,6 +151,15 @@ Else
 		Exit
 	EndIf
 EndIf
+FileWriteLine($sLogFile, "=========================================")
+;FileWriteLine($sLogFile, "CmdLineRaw: " & $CmdLineRaw)
+;If StringInStr($CmdLineRaw, "/BDDKill=1") Then
+;	$sBDDKill = "True"
+;	FileWriteLine($sLogFile, "sBDDKill: True")
+;Else
+;	$sBDDKill = "False"
+;	FileWriteLine($sLogFile, "sBDDKill: False")
+;EndIf
 
 Func PromptError($error, $info="Not Specified")
 	Switch $error
@@ -293,10 +303,10 @@ For $i = 1 To $aDriverZips[0]
 	$sDriverZipPath = @TempDir & "\" & $sSrcFolderName & "\" & $aDriverZips[$i]
 	$sDriverName = StringLeft($aDriverZips[$i], StringLen($aDriverZips[$i]) - 4) ;Remove file extension when updating progress bars
 
-	If FileExists($sSystemDrive & "\Drivers\" & $sSrcFolderName & "\" & $sDriverName) Then
-		FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- " & $sSystemDrive & "\Drivers\" & $sSrcFolderName & "\" & $sDriverName & " already exist, jumping to next .ZIP")
-		ContinueLoop
-	EndIf
+	;If FileExists($sSystemDrive & "\Drivers\" & $sSrcFolderName & "\" & $sDriverName) Then
+	;	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- " & $sSystemDrive & "\Drivers\" & $sSrcFolderName & "\" & $sDriverName & " already exist, jumping to next .ZIP")
+	;	ContinueLoop
+	;EndIf
 
 	If StringLen($sDriverName) > 35 Then
 		$sDriverName = StringLeft($sDriverName, 35) ;If name is longer than 8 characters, shorten the name.
@@ -366,10 +376,10 @@ FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Killed HideCmdWindowEvery3Sec
 ; Delete 7za.exe and HideCmdWindowEvery3Sec.exe
 FileDelete($s7ZAPath)
 FileDelete($sHideCmdWindowPath)
-If $sBDDKill = "True" Then
-	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Killing BDDRun.exe Process")
-	$sRet = Run("TASKKILL /F /T /IM BDDRun.exe", @WindowsDir, @SW_HIDE)
-EndIf
+;If $sBDDKill = "True" Then
+;	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Killing BDDRun.exe Process")
+;	$sRet = Run("TASKKILL /F /T /IM BDDRun.exe", @WindowsDir, @SW_HIDE)
+;EndIf
 FileClose($sLogFile)
 
 ;================================================================================================================

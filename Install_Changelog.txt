@@ -35,4 +35,28 @@
 ;	Adding logging for deleting of log files from root of SystemDrive.
 ; 1.4.1 - Oct 6, 2014
 ;	Corrected issue with Bundle-Changelog Copy script.
+; 1.4.2 - Oct 7, 2014
+;	Added Bundle Version to Install Header, and Log File.
+;	Added full path to log file for .ZIP being extracted.
+;	Reset the Bottom Progress Bars after each copy if complete.
+;	Output install86 and install64 EXEs.
+;	Set Install.exe to kill BDDRun.exe when complete. To fix BDDRun getting hung.
+; 1.4.3 - Oct 8, 2014
+;	Re-enabled 64Bit Re-direction.
+;	Adding additional logging on .ZIP copy routine.
+; 1.4.5 - Nov 5, 2014
+;	- Removed support for changing logging path as only 1 argument is allowed via -sp1 command.
+;	- Set Script to Delete Driver ZIP files after copying them local.
+; 1.4.6 - Feb 20, 2015
+;	- Set up delete routine to only occur if "temp" is found in ZipPath.
+; 1.4.7 - Mar 04, 2015
+;	- Corrected logic used to delete zippath.
+;	- Set script to delete 7za.exe and HideCmdWindowEvery3Sec.exe at end of script.
+; 1.5 - Feb 22, 2016
+;	- Added /killBDD and /logPath arguments and set logfile to overwrite itself.
+;	- Added #RequireAdmin autoit function.
+;	- Set up the Bundle_Changelog and Install_Changelog to be purged when running fresh OCB.
+; 1.5.2 - Apr 6, 2016
+;	- Commented out portion of install that skips existing install.zips.
+;	- Added logging for sBDDKill var.
 ;================================================================================================================
