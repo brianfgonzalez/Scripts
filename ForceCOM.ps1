@@ -8,8 +8,9 @@
 #	- Replaced regini.exe with SetACL.exe, which worked consistantly for reg perm changes.
 
 #$DeviceName = "Communications Port (COM3)"
-$DeviceName = "u-blox Virtual COM Port"
-$ComPort = "COM4"
+#$DeviceName = "u-blox Virtual COM Port"
+$DeviceName = "Sierra Wireless NMEA Port"
+$ComPort = "COM3"
 
 
 #Grab script directory
@@ -87,3 +88,6 @@ function Change-ComPort {
 }
 
 Change-ComPort $DeviceName $ComPort
+reg.exe load HKLM\ImportedHive "C:\Users\Default\NTUser.DAT"
+reg.exe import "$scriptPath\SetGPSViewerToCOM3.reg"
+reg.exe unload HKLM\ImportedHive
