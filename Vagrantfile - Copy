@@ -1,0 +1,168 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+# Check required plugins
+machine_name = "MDT001"
+
+REQUIRED_PLUGINS = %w(vagrant-reload)
+exit unless REQUIRED_PLUGINS.all? do |plugin|
+	Vagrant.has_plugin?(plugin) || (
+		puts "The #{plugin} plugin is required. Please install it with:"
+		puts "$ vagrant plugin install #{plugin}"
+		false
+	)
+end
+
+vmrun_path = ENV["programfiles(x86)"]+"\\VMware\\VMware VIX\\vmrun.exe"
+if File.exist?(vmrun_path) || File.exist?(vmrun_path)
+	puts "Checking to make sure that vagrant-vmware-workstation plugin is installed..."
+	EXIT unless Vagrant.has_plugin?(vagrant-vmware-workstation)
+	puts "The vagrant-vmware-workstation plugin is required. Please install it with:"
+	puts "$ vagrant plugin install vagrant-vmware-workstation"
+	puts "Also the license needs to be installed. Please install it with:"
+	puts "$ vagrant plugin license vagrant-vmware-workstation \"<vagrant staging directory>\license.lic\""
+end
+
+$out_file = File.new("debug.log", "w")
+def $stdout.write string
+    log_datas=string
+    if log_datas.gsub(/\r?\n/, "") != ''
+        log_datas=::Time.now.strftime("%d/%m/%Y %T")+" "+log_datas.gsub(/\r\n/, "\n")
+    end
+    super log_datas
+    $out_file.write log_datas
+    $out_file.flush
+end
+def $stderr.write string
+    log_datas=string
+    if log_datas.gsub(/\r?\n/, "") != ''
+        log_datas=::Time.now.strftime("%d/%m/%Y %T")+" "+log_datas.gsub(/\r\n/, "\n")
+    end
+    super log_datas
+    $out_file.write log_datas
+    $out_file.flush
+end
+
+module RunLocalCommand
+    class Config < Vagrant.plugin("2", :config)
+        attr_accessor :command
+    end
+
+    class Plugin < Vagrant.plugin("2")
+        name "local_shell"
+
+        config(:local_shell, :provisioner) do
+            Config
+        end
+
+        provisioner(:local_shell) do
+            Provisioner
+        end
+    end
+
+    class Provisioner < Vagrant.plugin("2", :provisioner)
+        def provision
+            result = system "#{config.command}"
+        end
+    end
+end
+
+module RunOnDestroy
+    class Config < Vagrant.plugin("2", :config)
+        attr_accessor :command
+    end
+	class Plugin < Vagrant.plugin("2")
+        name "on_destroy"
+        
+		config(:on_destroy, :provisioner) do
+            Config
+        end
+		
+        provisioner(:on_destroy) do
+            Provisioner
+        end
+	end
+	class Provisioner < Vagrant.plugin("2", :provisioner)
+		def cleanup
+			result = system "#{config.command}"
+		end
+	end
+end
+
+Vagrant.configure("2") do |config|
+
+# Port forward WinRM and RDP
+config.vm.network :forwarded_port, guest: 3389, host: 3389, id: "rdp", auto_correct:true
+config.vm.communicator = "ssh"
+config.vm.guest = :windows
+config.vm.network :forwarded_port, guest: 5985, host: 5985, id: "winrm", auto_correct:true
+# Port forward SSH
+config.vm.network :forwarded_port, guest: 22, host: 2222, id: "ssh", auto_correct:true
+
+config.vm.box = "brianfgonzalez/winserver12r2"
+config.vm.box_check_update = false
+config.vm.synced_folder "data", "/vagrant_data"
+config.vm.network "private_network", ip: "192.168.50.2", virtualbox__intnet: "intnet"
+#config.vm.network "public_network", bridge: "Intel(R) Ethernet Connection (3) I218-LM"
+config.vm.boot_timeout = 1200
+	
+["vmware_fusion", "vmware_workstation"].each do |provider|
+	config.vm.provider :provider do |v, override|
+	  v.gui = false
+	  v.vmx["memsize"] = "4096"
+	  v.vmx["numvcpus"] = "2"
+	  v.vmx["cpuid.coresPerSocket"] = "1"
+	  v.vmx["ethernet0.virtualDev"] = "vmxnet3"
+	  v.vmx["RemoteDisplay.vnc.enabled"] = "false"
+	  v.vmx["RemoteDisplay.vnc.port"] = "5900"
+	  v.vmx["scsi0.virtualDev"] = "lsisas1068"
+	end
+end
+
+config.vm.provider :virtualbox do |v, override|
+	v.gui = false
+	v.name = machine_name
+	v.memory = "4096"
+	v.cpus = "2"
+	v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+	v.customize ["modifyvm", :id, "--audio", "none"]
+	v.customize ["modifyvm", :id, "--clipboard", "bidirectional"]
+	v.customize ["modifyvm", :id, "--draganddrop", "hosttoguest"]
+	v.customize ["modifyvm", :id, "--usb", "off"]
+	v.customize ["modifyvm", :id, "--chipset", "ich9"]
+	v.customize ["setextradata", "global", "GUI/SuppressMessages", "all"]
+	
+	#Fixes associated with the time sync with virtualbox
+	v.customize ["guestproperty", "set", :id, "/VirtualBox/GuestAdd/VBoxService/--timesync-set-threshold", "1000"]
+	#Ensure DHCP is enabled for intnet
+	#config.vm.provision "dhcpserver", type: "local_shell",
+	#	command: '"\Program Files\Oracle\VirtualBox\VBoxManage.exe" "dhcpserver" "add" "--netname" "intnet" "--ip" "192.168.55.1" "--netmask" "255.255.255.0" "--lowerip" "192.168.55.100" "--upperip" "192.168.55.200" "--enable"'
+end
+
+# Change comp name
+config.vm.hostname = machine_name
+
+# Use this command to list all time zones: tzutil /l | more
+config.vm.provision "shell", privileged:"true", powershell_elevated_interactive:"true",
+ inline:'tzutil.exe /s "Eastern Standard Time"'
+
+# Create sub-folders if needed.
+Dir.mkdir("data") unless Dir.exist?("data")
+Dir.mkdir("data/cache") unless Dir.exist?("data/cache")
+Dir.mkdir("data/packages") unless Dir.exist?("data/packages")
+
+# Perform reboot to workaround issue with provisioning not having internet access in vmware
+# config.vm.provision :reload
+config.vm.provision "shell", privileged:"true", powershell_elevated_interactive:"true",
+ path:"https://gist.githubusercontent.com/brianfgonzalez/fa0720471ce2f6722d3ced4672e3f47a/raw/2926bc004ed242e8bab5766e1f9d9e21ab321161/mdt.ps1"
+
+# Reboot VM
+# config.vm.provision :reload
+
+config.vm.post_up_message = "\r\n\r\n\r\n\r\n==================================================="\
+"\r\nMDT server is up and ready for further configuration.\r\nAttach another vm (internal network) to data\LitetouchPE_x64.iso!"
+
+#machine_path = (ENV["USERPROFILE"]+"\\VirtualBox VMs\\"+machine_name)
+#config.vm.provision "deletevmfolder", type: "on_destroy",
+#	command: "rd /s/q \""+machine_path+"\""
+
+end

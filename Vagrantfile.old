@@ -1,0 +1,179 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+# Check required plugins
+server_name = "MDT001"
+client_name = "CLIENT001"
+gist_url = "https://gist.githubusercontent.com/brianfgonzalez/fa0720471ce2f6722d3ced4672e3f47a/raw/2e29b5569f90e49cd1933106d213f6cd2724d427/mdt.ps1"
+
+mem = `wmic computersystem Get TotalPhysicalMemory`.split[1].to_i / 1024 / 1024 / 4
+
+REQUIRED_PLUGINS = %w(vagrant-triggers)
+exit unless REQUIRED_PLUGINS.all? do |plugin|
+	Vagrant.has_plugin?(plugin) || (
+		puts "The #{plugin} plugin is required. Please install it with:"
+		puts "$ vagrant plugin install #{plugin}"
+		false
+	)
+end
+
+vmrun_path = ENV["programfiles(x86)"]+"\\VMware\\VMware VIX\\vmrun.exe"
+if File.exist?(vmrun_path) || File.exist?(vmrun_path)
+	puts "Checking to make sure that vagrant-vmware-workstation plugin is installed..."
+	EXIT unless Vagrant.has_plugin?(vagrant-vmware-workstation)
+	puts "The vagrant-vmware-workstation plugin is required. Please install it with:"
+	puts "$ vagrant plugin install vagrant-vmware-workstation"
+	puts "Also the license needs to be installed. Please install it with:"
+	puts "$ vagrant plugin license vagrant-vmware-workstation \"<vagrant staging directory>\license.lic\""
+end
+
+$out_file = File.new("debug.log", "w")
+def $stdout.write string
+    log_datas=string
+    if log_datas.gsub(/\r?\n/, "") != ''
+        log_datas=::Time.now.strftime("%d/%m/%Y %T")+" "+log_datas.gsub(/\r\n/, "\n")
+    end
+    super log_datas
+    $out_file.write log_datas
+    $out_file.flush
+end
+def $stderr.write string
+    log_datas=string
+    if log_datas.gsub(/\r?\n/, "") != ''
+        log_datas=::Time.now.strftime("%d/%m/%Y %T")+" "+log_datas.gsub(/\r\n/, "\n")
+    end
+    super log_datas
+    $out_file.write log_datas
+    $out_file.flush
+end
+
+Vagrant.configure("2") do |root|
+
+# clean up files on the host after the guest is destroyed
+root.trigger.after :destroy, :force => true do
+	xml_path = ENV["USERPROFILE"]+"\\VIRTUA~1\\VirtualBox.xml"
+	machine_path = ENV["USERPROFILE"]+"\\VIRTUA~2"
+	run 'taskkill /IM virtualbox.exe /f'
+	run 'taskkill /IM vboxsvc.exe /f'
+	run 'powershell -Command Remove-Item -Path \"'+machine_path+'\\*\" -Force -Confirm:$false -Recurse'
+	run 'powershell -Command Remove-Item -Path '+xml_path+' -Force -Confirm:$false'
+	run 'cmd.exe /c rd /s/q '+machine_path
+	run 'taskkill /IM ruby.exe /f'
+end
+
+# Create sub-folders if needed.
+Dir.mkdir("data") unless Dir.exist?("data")
+Dir.mkdir("data/cache") unless Dir.exist?("data/cache")
+Dir.mkdir("data/packages") unless Dir.exist?("data/packages")
+
+#Ensure DHCP is removed for intnet
+root.trigger.before :up, :force => true do
+	run '"\Program Files\Oracle\VirtualBox\VBoxManage.exe" dhcpserver remove --netname intnet'
+	run 'powershell -command "Invoke-Expression (Invoke-WebRequest -Uri https://chocolatey.org/install.ps1 -UseBasicParsing)"'
+	run 'choco install sccmtoolkit --y'
+end
+
+#Wait for complete.log from HOST
+root.trigger.after :up, :force => true do
+	run 'powershell -Command Remove-Item -Path "data\complete.old" -Force -Confirm:$false'
+	run 'powershell -Command Move-Item -Path "data\complete.log" "data\complete.old" -Force -Confirm:$false'
+	run 'powershell -Command "start -WindowStyle Maximized -FilePath c:\PROGRA~2\CONFIG~1\CLIENT~1\CMTrace.exe debug.log"'
+	run 'powershell -Command "While(!(Test-Path "data\complete.log")){Start-Sleep -s 30;Write-Host Waiting on provisioning to complete..}"'
+end
+
+root.vm.define "server", primary: "true" do |server|
+	# Change comp name
+	server.vm.guest = :windows
+	server.vm.box = "brianfgonzalez/winserver12r2"
+	server.vm.hostname = server_name
+	server.vm.box_check_update = false
+	server.vm.synced_folder "data", "/vagrant_data"
+	server.vm.network "private_network", ip: "192.168.50.2", virtualbox__intnet: "intnet"
+	#server.vm.network "public_network", bridge: "Intel(R) Ethernet Connection (3) I218-LM"
+	#server.vm.network "forwarded_port", guest: 3389, host: 12356, auto_correct: true
+	server.vm.boot_timeout = 1200
+		
+	server.vm.provider :virtualbox do |v, override|
+		v.gui = true
+		v.name = server_name
+		v.memory = mem
+		v.cpus = "2"
+		v.customize ["modifyvm", :id, "--ostype", "Windows2012_64"]
+		v.customize ["modifyvm", :id, "--groups", "/"]
+		v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+		v.customize ["modifyvm", :id, "--audio", "none"]
+		v.customize ["modifyvm", :id, "--clipboard", "bidirectional"]
+		v.customize ["modifyvm", :id, "--draganddrop", "hosttoguest"]
+		v.customize ["modifyvm", :id, "--usb", "off"]
+		v.customize ["modifyvm", :id, "--chipset", "ich9"]
+		v.customize ["modifyvm", :id, "--nictype1", "82540EM"]
+		v.customize ["modifyvm", :id, "--nictype2", "82540EM"]
+		v.customize ["modifyvm", :id, "--cableconnected2", "on"]
+
+		# Sets input key to Right-Alt key for toughbooks usage
+		v.customize ["setextradata", "global", "GUI/Input/HostKeyCombination", "165"]
+		v.customize ["setextradata", "global", "GUI/SuppressMessages", "all"]
+		
+		#Fixes associated with the time sync with virtualbox
+		v.customize ["guestproperty", "set", :id, "/VirtualBox/GuestAdd/VBoxService/--timesync-set-threshold", "1000"]
+	end
+
+	# Use this command to list all time zones: tzutil /l | more
+	server.vm.provision "shell", privileged: "true", powershell_elevated_interactive: "true",
+	 name: "timezone config", inline:'tzutil.exe /s "Eastern Standard Time"'
+	server.vm.provision "shell", privileged: "true", powershell_elevated_interactive: "true",
+	 name: "gist script download", inline:'iwr -Uri "'+gist_url+'" -OutFile "\tmp\script.ps1"'
+	server.vm.provision "shell", privileged: "true", powershell_elevated_interactive: "true",
+	 name: "map z to vagrant share", inline:'net use z: \\'+ENV['ComputerName']+'\logs /user:vagrant vagrant /persistent:yes'
+	server.vm.provision "shell", privileged: "true", powershell_elevated_interactive: "true",
+	 name: "start gist script", inline:'saps -NoNewWindow powershell.exe "\tmp\script.ps1"'
+	 #start -NoNewWindow -FilePath "powershell.exe" -RedirectStandardOutput "\vagrant\debug.log" -ArgumentList "-File \tmp\script.ps1"'	 
+	 #powershell.exe -RedirectStandardOutput \tmp\script_phaseA.log -File \tmp\script.ps1'
+end
+
+root.vm.define "client", autostart: false do |client|
+	client.vm.box = "c33s/empty"
+	client.vm.guest = :windows
+	#client.vm.hostname = client_name	
+	client.vm.network "private_network", type: "dhcp", virtualbox__intnet: "intnet", auto_config: false
+	#client.vm.network "forwarded_port", guest: 3389, host: 12263, auto_correct: true
+		
+	client.vm.provider :virtualbox do |v, override|
+		v.gui = false
+		v.name = client_name
+		v.memory = mem
+		v.cpus = "2"
+		v.customize ["modifyvm", :id, "--ostype", "Windows10_64"]
+		v.customize ["modifyvm", :id, "--groups", "/"]
+		v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+		v.customize ["modifyvm", :id, "--audio", "none"]
+		v.customize ["modifyvm", :id, "--clipboard", "bidirectional"]
+		v.customize ["modifyvm", :id, "--draganddrop", "hosttoguest"]
+		v.customize ["modifyvm", :id, "--usb", "off"]
+		v.customize ["modifyvm", :id, "--chipset", "ich9"]
+		v.customize ["modifyvm", :id, "--boot1", "dvd"]
+		v.customize ["modifyvm", :id, "--boot2", "net"]
+		v.customize ["modifyvm", :id, "--boot3", "disk"]
+		v.customize ["modifyvm", :id, "--boot4", "none"]
+		v.customize ["modifyvm", :id, "--nictype1", "82540EM"]
+		v.customize ["modifyvm", :id, "--nicbootprio1", "2"]
+		v.customize ["modifyvm", :id, "--nictype2", "82540EM"]
+		v.customize ["modifyvm", :id, "--nicbootprio2", "1"]
+		v.customize ["modifyvm", :id, "--cableconnected2", "on"]
+		v.customize ["storageattach", :id, "--storagectl", "IDE", "--port", "1", "--device", "0", "--type", "dvddrive", "--medium", "\\v.staging\\data\\LiteTouchPE_x64.iso"]
+		
+		# Sets input key to Right-Alt key for toughbooks usage
+		v.customize ["setextradata", "global", "GUI/Input/HostKeyCombination", "165"]
+		v.customize ["setextradata", "global", "GUI/SuppressMessages", "all"]
+		
+		#Fixes associated with the time sync with virtualbox
+		v.customize ["guestproperty", "set", :id, "/VirtualBox/GuestAdd/VBoxService/--timesync-set-threshold", "1000"]
+	end
+end
+
+root.vm.post_up_message = "\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n"\
+"\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n"\
+"\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n\r\n"\
+"\r\n\r\n\r\n\r\n==================================================="\
+"\r\nMDT server is up completing config, open gui and wait for complete prompt..."
+
+end
