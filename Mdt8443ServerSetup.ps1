@@ -5,6 +5,8 @@ Param([string]$Phase = 'A',[string]$CompName = 'MDT844301')
 # & ADK for Windows 10 (10.1.14393.0)
 # * Added custom _SMSTSPackageName and DriverPaths001 variables.
 # * Added Cabs and Working folder creation tasks.
+# * Extraction of local chocolately install pkg now supported.
+# * Install of latest Powershell was added.
 # ============================================================================================
 #Values that can be changed
 $deployRoot = "$env:SystemDrive\DeploymentShare" #Specify DeploymentShare local folder path
@@ -85,10 +87,13 @@ function InstallChocoApps
     If (-not (Test-Connection -ComputerName 'google.com' -Count 1 -Quiet)) 
     {
       #Look for localized install of chocolately
-      If (Get-ChildItem -Path "$env:SystemDrive\chocopkgs\chocolatey*\tools") 
+	  $sChocoNuPkg = 'C:\vagrant\choco*.nupkg'
+      If (Test-Path -Path $sChocoNuPkg)
       {
-        #Call chocolately local install
-        . (Get-ChildItem -Path "$env:SystemDrive\chocopkgs\chocolatey*\tools\chocolateyInstall.ps1").FullName
+        (Get-ChildItem $sChocoNuPkg).CopyTo('{0}\ChocoInstall.zip' -f $env:TEMP, $true)
+        Add-Type -assembly “system.io.compression.filesystem”
+        [io.compression.zipfile]::ExtractToDirectory('{0}\ChocoInstall.zip' -f $env:TEMP, '{0}\ChocoInstall' -f $env:TEMP)
+        . (Get-ChildItem -Path ('{0}\ChocoInstall' -f $env:TEMP) -filter 'chocolateyInstall.ps1' -Recurse).FullName
       }
       else 
       {
@@ -137,7 +142,7 @@ function InstallChocoApps
   CallExternalApplication -filePath $chocofilePath -argumentString $carg
   
   #Install other useful applications from interweb
-  $carg = 'install hackfont notepadplusplus 7zip.install imagemagick --debug --confirm'
+  $carg = 'install hackfont notepadplusplus 7zip.install imagemagick powershell --debug --confirm'
   CallExternalApplication -filePath $chocofilePath -argumentString $carg
   
   # Delete ImageMagick desktop shortcut
