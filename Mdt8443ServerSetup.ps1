@@ -1,5 +1,5 @@
 [CmdletBinding()]
-Param([string]$Phase = 'A',[string]$CompName = 'MDT2013U201')
+Param([string]$Phase = 'A',[string]$CompName = 'MDT844301')
 # ============================================================================================
 #Script installs MDT 8443 release (6.3.8443.0)
 # & ADK for Windows 10 (10.1.14393.0)
@@ -185,8 +185,8 @@ Properties=MyCustomProperty,SpecialDate
 SpecialDate=#DatePart("M",Now) & DatePart("D",Now) & DatePart("YYYY",Now)#
 
 [Default]
-;_SMSTSOrgName=Company Name
-;_SMSTSPackageName=Sub-Progress Text...
+_SMSTSOrgName=Company Name's %Product%*=====
+_SMSTSPackageName= %TaskSequenceName%*===== # ""&vbCrlf & ""  #Estimated Start time: %OSDStartTime%   %Architecture%boot*=====
 
 OSInstall=Y
 SkipProductKey=YES
