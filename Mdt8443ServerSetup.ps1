@@ -3,6 +3,8 @@ Param([string]$Phase = 'A',[string]$CompName = 'MDT844301')
 # ============================================================================================
 #Script installs MDT 8443 release (6.3.8443.0)
 # & ADK for Windows 10 (10.1.14393.0)
+# * Added custom _SMSTSPackageName and DriverPaths001 variables.
+# * Added Cabs and Working folder creation tasks.
 # ============================================================================================
 #Values that can be changed
 $deployRoot = "$env:SystemDrive\DeploymentShare" #Specify DeploymentShare local folder path
@@ -252,7 +254,6 @@ Userpassword=$desiredSecurePassword
 
   #Create DeploymentShare folder
   New-Item -Path $deployRoot -ItemType Directory -Force -Verbose
-  New-Item -Path ('{0}\Cabs' -f $deployRoot) -ItemType Directory -Force -Verbose
   #Create DS network share
   New-SmbShare -Name $deployshareName -Path $deployRoot -FullAccess Administrators -Verbose
 
@@ -268,7 +269,11 @@ Userpassword=$desiredSecurePassword
 
   #Create DS using MDT PS provider
   New-PSDrive -Name "DS001" -PSProvider "MDTProvider" -Root $deployRoot -Description "DS" `
-    -NetworkPath "\\$CompName\$deployshareName" | add-MDTPersistentDrive -Verbose
+    -NetworkPath "\\$CompName\$deployshareName" -Verbose | add-MDTPersistentDrive -Verbose
+
+  #Create CABs and Working sub-folders
+  New-Item -Path ('{0}\Cabs' -f $deployRoot) -ItemType Directory -Force -Verbose
+  New-Item -Path ('{0}\Working' -f $deployRoot) -ItemType Directory -Force -Verbose
 
   #Update bootstrap to include MDT account
   $bsPath = "$deployRoot\Control\Bootstrap.ini"
