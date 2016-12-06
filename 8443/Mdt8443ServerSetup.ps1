@@ -142,7 +142,7 @@ function InstallChocoApps
   CallExternalApplication -filePath $chocofilePath -argumentString $carg
   
   #Install other useful applications from interweb
-  $carg = 'install hackfont notepadplusplus 7zip.install imagemagick powershell --debug --confirm'
+  $carg = 'install hackfont notepadplusplus.install 7zip.install imagemagick.app powershell --debug --confirm'
   CallExternalApplication -filePath $chocofilePath -argumentString $carg
   
   # Delete ImageMagick desktop shortcut
@@ -187,11 +187,12 @@ function MDTSetup
 ;Go here for help on rules: https://technet.microsoft.com/en-us/library/dn781091.aspx
 [Settings]
 Priority=ProcessFirst,Default
-Properties=MyCustomProperty,SpecialDate
+Properties=MyCustomProperty,SpecialDate,OSDStartTime
 [ProcessFirst]
 SpecialDate=#DatePart("M",Now) & DatePart("D",Now) & DatePart("YYYY",Now)#
 
 [Default]
+OSDStartTime=# FormatDateTime(Now,3) #
 _SMSTSOrgName=Company Name's %Product%*=====
 _SMSTSPackageName= %TaskSequenceName%*===== # ""&vbCrlf & ""  #Estimated Start time: %OSDStartTime%   %Architecture%boot*=====
 

@@ -1,0 +1,43 @@
+machine_name = "MDT844301"
+gist_url="https://raw.githubusercontent.com/brianfgonzalez/Scripts/master/Mdt8443ServerSetup.ps1"
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "brianfgonzalez/winserver12r2"
+  config.vm.box_check_update = false
+  config.vm.network "private_network", ip: "192.168.50.2", virtualbox__intnet: "intnet"
+  config.vm.boot_timeout = 1200
+
+  config.vm.provider :virtualbox do |v, override|
+    v.gui = true
+    v.name = machine_name
+    v.memory = "4096"
+    v.cpus = "2"
+    v.customize ["modifyvm", :id, "--ostype", "Windows2012_64"]
+    v.customize ["modifyvm", :id, "--groups", "/"]
+    v.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+    v.customize ["modifyvm", :id, "--audio", "none"]
+    v.customize ["modifyvm", :id, "--clipboard", "bidirectional"]
+    v.customize ["modifyvm", :id, "--draganddrop", "bidirectional"]
+    v.customize ["modifyvm", :id, "--usb", "off"]
+    v.customize ["modifyvm", :id, "--chipset", "ich9"]
+    v.customize ["modifyvm", :id, "--nictype1", "82540EM"]
+    v.customize ["modifyvm", :id, "--nictype2", "82540EM"]
+    v.customize ["modifyvm", :id, "--cableconnected2", "on"]
+    # Sets input key to Right-Alt key for toughbooks usage
+    v.customize ["setextradata", "global", "GUI/Input/HostKeyCombination", "165"]
+    v.customize ["setextradata", "global", "GUI/SuppressMessages", "all"]
+    #Fixes associated with the time sync with virtualbox
+    v.customize ["guestproperty", "set", :id, "/VirtualBox/GuestAdd/VBoxService/--timesync-set-threshold", "1000"]
+  end
+  
+  #Use this command to list all time zones: tzutil /l | more
+  config.vm.provision "shell", privileged:"true", powershell_elevated_interactive:"true",
+    name: "force timezone set", inline:'tzutil.exe /s "Eastern Standard Time"'
+
+  #Provision section
+  config.vm.provision "a", type: "file", source: "script.ps1", destination: "/tmp/script.ps1"
+  config.vm.provision "b", type: "shell", privileged:"true", powershell_elevated_interactive:"true",
+    inline: 'iwr -Uri "'+gist_url+'" -OutFile "\tmp\script.ps1"'
+  config.vm.provision "c", type: "shell", privileged:"true", powershell_elevated_interactive:"true",
+    inline: 'saps powershell.exe "\tmp\script.ps1 -CompName '+machine_name+'"'
+end
