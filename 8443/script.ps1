@@ -2,7 +2,7 @@
 Param([string]$Phase = 'A',[string]$CompName = 'MDT844301')
 # ============================================================================================
 #Script installs MDT 8443 release (6.3.8443.0)
-# & ADK for Windows 10 (10.1.14393.0)
+# & ADK for Windows 10 (10.0.14393.0)
 # * Added custom _SMSTSPackageName and DriverPaths001 variables.
 # * Added Cabs and Working folder creation tasks.
 # * Extraction of local chocolately install pkg now supported.
@@ -130,7 +130,7 @@ function InstallChocoApps
   CallExternalApplication -filePath $chocofilePath -argumentString $carg
   
   #Install Windows ADK for Windows 10 10.1.14393.0 using local source (if avail.)
-  $carg = 'install windows-adk-winpe --version 10.1.14393.0 --debug --allowunofficial --confirm'
+  $carg = 'install windows-adk-winpe --version 10.0.14393.0 --debug --allowunofficial --confirm'
   CallExternalApplication -filePath $chocofilePath -argumentString $carg
   
   #Install MDT 8443 using local source (if avail.)
