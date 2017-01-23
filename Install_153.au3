@@ -2,16 +2,16 @@
 #Region ;**** Directives created by AutoIt3Wrapper_GUI ****
 #AutoIt3Wrapper_Icon=tbicon.ico
 #AutoIt3Wrapper_Outfile=Install.exe
-#AutoIt3Wrapper_UseX64=n
 #AutoIt3Wrapper_Res_Comment=Contact imaging@us.panasonic.com for support.
 #AutoIt3Wrapper_Res_Description=OneClick Panasonic Toughbook Installer.
-#AutoIt3Wrapper_Res_Fileversion=1.5.4.0
+#AutoIt3Wrapper_Res_Fileversion=1.5.3.0
 #AutoIt3Wrapper_Res_LegalCopyright=Panasonic Corporation Of North America
 #AutoIt3Wrapper_Res_Language=1033
 #EndRegion ;**** Directives created by AutoIt3Wrapper_GUI ****
-$sInstallVersion = "1.5.4"
+$sInstallVersion = "1.5.3"
 $sLogFolderPath = @WindowsDir & "\Temp"
 FileInstall("7za.exe", @WindowsDir & "\Temp\7za.exe", 1)
+FileInstall("HideCmdWindowEvery3Sec.exe", @WindowsDir & "\Temp\HideCmdWindowEvery3Sec.exe", 1)
 ;** AUT2EXE settings
 ;================================================================================================================
 ; Panasonic Toughbook Parent Script
@@ -22,30 +22,68 @@ FileInstall("7za.exe", @WindowsDir & "\Temp\7za.exe", 1)
 ;================================================================================================================
 ; Changelog
 ;================================================================================================================
-; 1.5.4 - Dec 23, 2016
-;	- Removed all log re-routing and HideCmdWindowEvery3Sec.exe calls.
-; 1.5.3 - Apr 22, 2016
-;	- Commented out code pertaining to KillBDD functionality, as it was causing errors.
-; 1.5.2 - Apr 6, 2016
-;	- Commented out portion of install that skips existing install.zips.
-;	- Added logging for sBDDKill var.
-; .......
-; 1.2.3 - May 14, 2013
-;	Set install.exe to perform an ArraySort on the $aDriverZips and not rely on the OS for correct sorting.
-; 1.2.2 - Apr 17, 2013
-;	Changed all C:\Windows strings to @WindowsDir
-; 1.2.1 - Feb 4 2013
-;	Changed script to dymanically search for Sub-Folder name and not rely on "src\" name.
-; 1.2 - Jan 31 2013
-;	Changed "##" o pre-fix used for skipped application/driver installs.
+; 1.0 - Dec 12 2012
+;	Added step to delete (pop) Optional Drivers from DriverZips Array.
 ; 1.1 - Dec 21 2012
 ;	Added PNPCheck function, corrected count of elements in driver array.
 ;	Added TASKKILL call at end of script to close CmdWindowEvery3Sec.exe
 ;	Updated .ICOs for both HideCmdWindowEvery3Sec.exe and install.exe
 ;	Also compiled code with PanaConsulting icon.
 ;	Cleaned up Progress Bar Display by adding Bundle Name and removing File Extension
-; 1.0 - Dec 12 2012
-;	Added step to delete (pop) Optional Drivers from DriverZips Array.
+; 1.2 - Jan 31 2013
+;	Changed "##" o pre-fix used for skipped application/driver installs.
+; 1.2.1 - Feb 4 2013
+;	Changed script to dymanically search for Sub-Folder name and not rely on "src\" name.
+; 1.2.2 - Apr 17, 2013
+;	Changed all C:\Windows strings to @WindowsDir
+; 1.2.3 - May 14, 2013
+;	Set install.exe to perform an ArraySort on the $aDriverZips and not rely on the OS for correct sorting.
+; 1.2.4 - May 29, 2013
+;	Shortened the name of each step displayed to 35 characters.
+;	Set the current install to skip if its already been run in the past.
+; 1.3 - Dec 16, 2013
+;	Changed C:\ calls to SystemDrive
+;	Added call to DLL to disable 64-Bit Redirection
+;	Added ability to redirect log file to alternate Directory using argument 1
+;	Added log redirection within PInstalls as well.  Add "%1" within log for log folder redirection.
+; 1.3.2 - Dec 22, 2013
+;	Set argument passed to PInstall to 2ND arg, as 1st is used in standard PInstalls already.
+; 1.3.3 - Sep 25, 2014
+;	Deletes any produced .log files in the root of the SystemDrive.
+;	Added additional step to force copy of .ZIP before extraction.
+; 1.4 - Oct 3, 2014
+;	Set Install.exe to copy Changelog and also pull bundle version number.
+;	Adding logging for deleting of log files from root of SystemDrive.
+; 1.4.1 - Oct 6, 2014
+;	Corrected issue with Bundle-Changelog Copy script.
+; 1.4.2 - Oct 7, 2014
+;	Added Bundle Version to Install Header, and Log File.
+;	Added full path to log file for .ZIP being extracted.
+;	Reset the Bottom Progress Bars after each copy if complete.
+;	Output install86 and install64 EXEs.
+;	Set Install.exe to kill BDDRun.exe when complete. To fix BDDRun getting hung.
+; 1.4.3 - Oct 8, 2014
+;	Re-Enabled 64Bit Re-Direction.
+; 1.4.4 - Nov 5, 2014
+;	Added support to pass argument to Kill BDD.
+; 1.4.5 - Nov 5, 2014
+;	- Removed support for changing logging path as only 1 argument is allowed via -sp1 command.
+;	- Set Script to Delete Driver ZIP files after copying them local.
+; 1.4.6 - Feb 20, 2015
+;	- Set up delete routine to only occur if "temp" is found in ZipPath.
+; 1.4.7 - Mar 04, 2015
+;	- Corrected logic used to delete zippath.
+;	- Set script to delete 7za.exe and HideCmdWindowEvery3Sec.exe at end of script.
+; 1.5 - Feb 22, 2016
+;	- Added /killBDD and /logPath arguments and set logfile to overwrite itself.
+;	- Added #RequireAdmin autoit function.
+;	- Set up the Bundle_Changelog and Install_Changelog to be purged when running fresh OCB.
+; 1.5.1 - Mar 21, 2016
+; 1.5.2 - Apr 6, 2016
+;	- Commented out portion of install that skips existing install.zips.
+;	- Added logging for sBDDKill var.
+; 1.5.3 - Apr 22, 2016
+;	- Commented out code pertaining to KillBDD functionality, as it was causing errors.
 ;================================================================================================================
 ; AutoIt Includes
 ;================================================================================================================
@@ -63,15 +101,75 @@ AutoItSetOption("MustDeclareVars", 0)
 Dim $aPNPIDContents[100] ;Array used when checking through the PNPID txt file
 Local $StartTimer = TimerInit()
 
-; Create LogFile, will reside in \Windows\Temp directory
-$sLogFile = FileOpen($sLogFolderPath & "\PanaInstall_" & @YEAR & @MON & @MDAY & "_" & @HOUR & @MIN & ".log", 2)
-If $sLogFile = -1 Then
-	MsgBox(16, "logPath error", "Unable to access/create log file (" & $sLogFile & ").")
-	Exit
+;If Not IsAdmin() Then ; Verifies user is Admin
+;	MsgBox(0, "", "User is not an administrator.  Exiting script.")
+;	Exit
+;EndIf
+
+If $cmdLine[0] > 0 Then
+
+	For $i = 1 To $cmdLine[0]
+		;MsgBox(0, "", "Full Argument: " & $cmdLine[$i])
+		If StringInStr($cmdLine[$i], "/?") Or _
+			StringInStr($cmdLine[$i], "-?") Or _
+			StringInStr($cmdLine[$i], "?") Or _
+			StringInStr($cmdLine[$i], "help") Then
+
+			;MsgBox(64, "Help information", "use ""/logPath="" to re-route log file" & @CRLF & _
+			;	"use ""/killBDD=1"" to force OCB to kill BDD upon completion" & @CRLF & _
+			;	"for silent run with NO arguments.")
+			MsgBox(64, "Help information", "use ""/logPath="" to re-route log file" & @CRLF & _
+				"for silent run with NO arguments.")
+			Exit
+		EndIf
+
+		If StringInStr($cmdLine[$i], "/logPath") Then
+			$splitArg = StringSplit($cmdLine[$i], "=")
+			If $splitArg[0] > 1 Then
+				If StringRight($splitArg[2],5)=".log""" Or _
+				StringRight($splitArg[2],4)=".log" Or _
+				StringRight($splitArg[2],5)=".txt""" Or _
+				StringRight($splitArg[2],4)=".txt" Then
+					$sLogFile = FileOpen($splitArg[2], 1)
+					If $sLogFile = -1 Then
+						MsgBox(16, "logPath error", "Unable to access/create log file (" & $splitArg[2] & ").")
+						Exit
+					EndIf
+				Else
+					PromptError("logPath", $splitArg[2])
+				EndIf
+		Else
+				PromptError("logPath")
+			EndIf
+		EndIf
+	Next
+Else
+	; Create LogFile
+	$sLogFile = FileOpen($sLogFolderPath & "\PanaInstall_" & @YEAR & @MON & @MDAY & "_" & @HOUR & @MIN & ".log", 2)
+	If $sLogFile = -1 Then
+		MsgBox(16, "logPath error", "Unable to access/create log file (" & $sLogFile & ").")
+		Exit
+	EndIf
 EndIf
+FileWriteLine($sLogFile, "=========================================")
+;FileWriteLine($sLogFile, "CmdLineRaw: " & $CmdLineRaw)
+;If StringInStr($CmdLineRaw, "/BDDKill=1") Then
+;	$sBDDKill = "True"
+;	FileWriteLine($sLogFile, "sBDDKill: True")
+;Else
+;	$sBDDKill = "False"
+;	FileWriteLine($sLogFile, "sBDDKill: False")
+;EndIf
+
+Func PromptError($error, $info="Not Specified")
+	Switch $error
+		Case "logPath"
+			MsgBox(16, "Error in logPath argument", "Syntex error in logPath,  please include full path to logfile (i.e. /logPath:""C:\MyLogs\MyLog.log"")" & @CRLF & "Specified logPath: " & $info)
+			Exit
+	EndSwitch
+EndFunc
 
 ; Tag LogFile with Start Date and Time
-FileWriteLine($sLogFile, "=========================================")
 FileWriteLine($sLogFile, "Start Date/Time Stamp: " & _Now())
 
 ; Grab Sub-Folder path containing driver zip files
@@ -134,6 +232,15 @@ $sDriverZips = _ArrayToString($aDriverZips, ",")
 $sTestQuery = '\Q##_\E.*?,'
 $sDriverZipsNoOptionals = StringRegExpReplace($sDriverZips, $sTestQuery, "")
 $aDriverZips = StringSplit($sDriverZipsNoOptionals, ",")
+
+; Kick off Hide Command Shell Program
+$sHideCmdWindowPath = @WindowsDir & "\Temp\HideCmdWindowEvery3Sec.exe"
+If FileExists($sHideCmdWindowPath) Then
+	Run($sHideCmdWindowPath, @ScriptDir, @SW_HIDE)
+	FileWriteLine($sLogFile, "Kicked off " & $sHideCmdWindowPath & "):" & @error)
+Else
+	FileWriteLine($sLogFile, $sHideCmdWindowPath & " not found.")
+EndIf
 
 ; Copy 7za.exe locally to process ZIP packages
 $s7ZAPath = @WindowsDir & "\Temp\7za.exe"
@@ -264,11 +371,17 @@ If NOT @error = 1 Then
 EndIf
 
 FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Script Execution is complete.")
-
-; Delete 7za.exe
+$sRet = Run("TASKKILL /F /T /IM HideCmdWindowEvery3Sec.exe", @WindowsDir, @SW_HIDE)
+FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Killed HideCmdWindowEvery3Sec.exe Process: " & $sRet)
+; Delete 7za.exe and HideCmdWindowEvery3Sec.exe
 FileDelete($s7ZAPath)
+FileDelete($sHideCmdWindowPath)
+;If $sBDDKill = "True" Then
+;	FileWriteLine($sLogFile, @HOUR & ":" & @MIN & "--- Killing BDDRun.exe Process")
+;	$sRet = Run("TASKKILL /F /T /IM BDDRun.exe", @WindowsDir, @SW_HIDE)
+;EndIf
 FileClose($sLogFile)
-Exit
+
 ;================================================================================================================
 ; Functions and Sub Routines
 ;================================================================================================================

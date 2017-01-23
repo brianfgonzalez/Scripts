@@ -1,189 +1,129 @@
-﻿Param([string]$Phase = "A")
-$VerbosePreference = "Continue"
-# Give system time to start up and re-connect to vagrant shares.
-Start-Sleep -Seconds "3"
+﻿function Enable-Privilege {
+ param(
+  ## The privilege to adjust. This set is taken from
+  ## http://msdn.microsoft.com/en-us/library/bb530716(VS.85).aspx
+  [ValidateSet(
+   "SeAssignPrimaryTokenPrivilege", "SeAuditPrivilege", "SeBackupPrivilege",
+   "SeChangeNotifyPrivilege", "SeCreateGlobalPrivilege", "SeCreatePagefilePrivilege",
+   "SeCreatePermanentPrivilege", "SeCreateSymbolicLinkPrivilege", "SeCreateTokenPrivilege",
+   "SeDebugPrivilege", "SeEnableDelegationPrivilege", "SeImpersonatePrivilege", "SeIncreaseBasePriorityPrivilege",
+   "SeIncreaseQuotaPrivilege", "SeIncreaseWorkingSetPrivilege", "SeLoadDriverPrivilege",
+   "SeLockMemoryPrivilege", "SeMachineAccountPrivilege", "SeManageVolumePrivilege",
+   "SeProfileSingleProcessPrivilege", "SeRelabelPrivilege", "SeRemoteShutdownPrivilege",
+   "SeRestorePrivilege", "SeSecurityPrivilege", "SeShutdownPrivilege", "SeSyncAgentPrivilege",
+   "SeSystemEnvironmentPrivilege", "SeSystemProfilePrivilege", "SeSystemtimePrivilege",
+   "SeTakeOwnershipPrivilege", "SeTcbPrivilege", "SeTimeZonePrivilege", "SeTrustedCredManAccessPrivilege",
+   "SeUndockPrivilege", "SeUnsolicitedInputPrivilege")]
+  $Privilege,
+  ## The process on which to adjust the privilege. Defaults to the current process.
+  $ProcessId = $pid,
+  ## Switch to disable the privilege, rather than enable it.
+  [Switch] $Disable
+ )
 
-If (-not (Test-Path $profile)) { New-item -type file -force $profile }
-Import-Module "$env:WinDir\system32\WindowsPowerShell\v1.0\Modules\NetSecurity\NetSecurity.psd1"
-Import-Module "$env:WinDir\system32\WindowsPowerShell\v1.0\Modules\SmbShare\SmbShare.psd1"
-Import-Module "$env:WinDir\system32\WindowsPowerShell\v1.0\Modules\NetTCPIP\NetTCPIP.psd1"
-Import-Module "$env:WinDir\system32\WindowsPowerShell\v1.0\Modules\ServerManager\ServerManager.psd1"
-Set-NetFirewallProfile -Profile Domain,Public,Private -Enabled False
-$scriptPath = $myInvocation.MyCommand.Definition
+ ## Taken from P/Invoke.NET with minor adjustments.
+ $definition = @'
+ using System;
+ using System.Runtime.InteropServices;
+  
+ public class AdjPriv
+ {
+  [DllImport("advapi32.dll", ExactSpelling = true, SetLastError = true)]
+  internal static extern bool AdjustTokenPrivileges(IntPtr htok, bool disall,
+   ref TokPriv1Luid newst, int len, IntPtr prev, IntPtr relen);
+  
+  [DllImport("advapi32.dll", ExactSpelling = true, SetLastError = true)]
+  internal static extern bool OpenProcessToken(IntPtr h, int acc, ref IntPtr phtok);
+  [DllImport("advapi32.dll", SetLastError = true)]
+  internal static extern bool LookupPrivilegeValue(string host, string name, ref long pluid);
+  [StructLayout(LayoutKind.Sequential, Pack = 1)]
+  internal struct TokPriv1Luid
+  {
+   public int Count;
+   public long Luid;
+   public int Attr;
+  }
+  
+  internal const int SE_PRIVILEGE_ENABLED = 0x00000002;
+  internal const int SE_PRIVILEGE_DISABLED = 0x00000000;
+  internal const int TOKEN_QUERY = 0x00000008;
+  internal const int TOKEN_ADJUST_PRIVILEGES = 0x00000020;
+  public static bool EnablePrivilege(long processHandle, string privilege, bool disable)
+  {
+   bool retVal;
+   TokPriv1Luid tp;
+   IntPtr hproc = new IntPtr(processHandle);
+   IntPtr htok = IntPtr.Zero;
+   retVal = OpenProcessToken(hproc, TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, ref htok);
+   tp.Count = 1;
+   tp.Luid = 0;
+   if(disable)
+   {
+    tp.Attr = SE_PRIVILEGE_DISABLED;
+   }
+   else
+   {
+    tp.Attr = SE_PRIVILEGE_ENABLED;
+   }
+   retVal = LookupPrivilegeValue(null, privilege, ref tp.Luid);
+   retVal = AdjustTokenPrivileges(htok, false, ref tp, 0, IntPtr.Zero, IntPtr.Zero);
+   return retVal;
+  }
+ }
+'@
 
-function AddFolder {
-    Param ([string]$xmlPath,[string]$nodeName)
-    if (!(Test-Path($xmlPath))) {
-    [xml]$xml = "<groups><group /></groups>"
-    }elseif (!(([xml](type $xmlPath)).groups.HasChildNodes)) {
-    [xml]$xml = "<groups><group /></groups>"
-    }else{
-    [xml]$xml = (type $xmlPath)
-    }
-    $newGUID = ([guid]::NewGuid())
-[xml]$newNode = @"
-<group guid="{$newGUID}" enable="True">
-    <Name>$nodeName</Name>
-</group>
-"@
-    $xml.groups.AppendChild($xml.ImportNode($newNode.group, $true))
-    $xml.save($xmlPath)
+ $processHandle = (Get-Process -id $ProcessId).Handle
+ $type = Add-Type $definition -PassThru
+ $type[0]::EnablePrivilege($processHandle, $Privilege, $Disable)
 }
 
-function Test-RegistryValue {
-    param ([string]$Path,[string]$Value)
-    try {
-    Get-ItemProperty -Path $Path -Name $Value -ErrorAction Stop | Out-Null
-    return $true
-    } catch {return $false}
-}
+Enable-Privilege SeTakeOwnershipPrivilege
+<#
+$key = [Microsoft.Win32.Registry]::LocalMachine.OpenSubKey("SAM\SAM",`
+[Microsoft.Win32.RegistryKeyPermissionCheck]::ReadWriteSubTree,[System.Security.AccessControl.RegistryRights]::takeownership)
 
-function InstallChocoApps {
-    If (-not (Test-Connection -ComputerName "google.com" -Count 1 -Quiet))
-    {
-        Write-Host "Internet is down!"
-        Exit
-    }
-    If (-not (Invoke-WebRequest -Uri "https://chocolatey.org/install.ps1" -UseBasicParsing | Invoke-Expression)) {Exit}
-    $chocoPath = "$env:SystemDrive\ProgramData\chocolatey\bin\choco.exe"
-    Start-Process -FilePath $chocoPath -ArgumentList "feature enable -n=allowGlobalConfirmation" -Wait -NoNewWindow
-    Start-Process -FilePath $chocoPath -ArgumentList "feature enable -n=allowEmptyChecksums" -Wait -NoNewWindow
-    Start-Process -FilePath $chocoPath -ArgumentList "source add --name=""local"" --source=""$env:SystemDrive\vagrant_data\packages"" --priority=""1""" -Wait -NoNewWindow
-    Start-Process -FilePath $chocoPath -ArgumentList "config set --cache-location=""$env:SystemDrive\vagrant_data\cache""" -Wait -NoNewWindow
-    Start-Process -FilePath $chocoPath -ArgumentList "install windows-adk-winpe mdt hackfont notepadplusplus 7zip.install sccmtoolkit imagemagick pscx --limitoutput --allowunofficial" -Wait -NoNewWindow
+# You must get a blank acl for the key b/c you do not currently have access
+$acl = $key.GetAccessControl([System.Security.AccessControl.AccessControlSections]::None)
+$me = [System.Security.Principal.NTAccount]"$env:COMPUTERNAME\$env:USERNAME"
+$acl.SetOwner($me)
+$key.SetAccessControl($acl)
 
-    # Delete ImageMagick desktop shortcut
-    Remove-Item -Path "$env:UserProfile\Desktop\ImageMagick Display.lnk" -Force
+# After you have set owner you need to get the acl with the perms so you can modify it.
+$acl = $key.GetAccessControl()
+$rule = New-Object System.Security.AccessControl.RegistryAccessRule ($me,"FullControl","Allow")
+$acl.SetAccessRule($rule)
+$key.SetAccessControl($acl)
 
-    # Set hackfont as default for notepad++
-    If (Test-Path -Path "$env:WinDir\Fonts\Hack-Regular.ttf") {
-    $path = "${env:ProgramFiles(x86)}\Notepad++\stylers.model.xml"
-    $xml = [xml](Get-Content $path)
-    $node = $xml.NotepadPlus.GlobalStyles.WidgetStyle | ? { $_.name -eq "Global override" }
-    $node.fontName = "Hack"
-    $node.fontSize = "11"
-    $xml.Save($path)
-    }
+$key.Close()
+#>
 
-    # Add notepad++ to path
-    Start-Process -FilePath "$env:WinDir\System32\setx.exe" -ArgumentList "PATH ""$env:Path;${env:ProgramFiles(x86)}\Notepad++"" /M" -Wait -NoNewWindow
-}
+# get the username of the current user
+$oCurrentUserName = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+# create an identity reference for the owner
+$oCurrentUser = new-object System.Security.Principal.NTAccount($oCurrentUserName)
 
-function MDTSetup {
-    Import-Module "$env:ProgramFiles\Microsoft Deployment Toolkit\bin\MicrosoftDeploymentToolkit.psd1"
+$oIdentityReference = [System.Security.Principal.NTAccount]("$env:COMPUTERNAME\$env:USERNAME")
+# Rights to assign. List: http://msdn.microsoft.com/en-us/library/system.security.accesscontrol.registryrights(v=vs.110).aspx
+$oRegistryRights = [System.Security.AccessControl.RegistryRights]::FullControl
+# Permission inheritance: None, ContainerInherit, Object Inherit
+$oInheritanceFlags = [System.Security.AccessControl.InheritanceFlags]::None
+# Propagation of permissions: None, InheritOnly, NoPropagateInherit
+$oPropagationFlags = [System.Security.AccessControl.PropagationFlags]::None
+$oAccessControlType = [System.Security.AccessControl.AccessControlType]::Allow
+$oRule = New-Object System.Security.AccessControl.RegistryAccessRule ($oIdentityReference, $oRegistryRights, $oInheritanceFlags, $oPropagationFlags, $oAccessControlType)
+# Alternatively, create your rule list manually:
+$AclRuleList = New-Object System.Security.AccessControl.RegistrySecurity
+$AclRuleList.AddAccessRule($oRule)
+$AclRuleList.SetOwner([System.Security.Principal.NTAccount]"Administrators")
+$AclRuleList.SetAccessRuleProtection($true,$false)
 
-    # Create and share DS folder
-    New-Item -Path "C:\DeploymentShare" -ItemType directory
-    New-SmbShare -Name "DS" -Path "C:\DeploymentShare" -FullAccess Administrators
-
-    # Add MDT local user account
-    Start-Process -FilePath "cmd.exe" -ArgumentList "/c net user MDT P@ssw0rd /add" -Wait -NoNewWindow
-    Start-Process -FilePath "cmd.exe" -ArgumentList "/c net localgroup Administrators MDT /add" -Wait -NoNewWindow
-    Start-Process -FilePath "cmd.exe" -ArgumentList '/c wmic UserAccount where Name="MDT" set PasswordExpires=False' -Wait -NoNewWindow
-
-    # Create DS using MDT PS provider
-    new-PSDrive -Name "DS001" -PSProvider "MDTProvider" -Root "$env:SystemDrive\DeploymentShare" -Description "DS" -NetworkPath "\\$env:computername\DS" | add-MDTPersistentDrive
-
-    # Update bootstrap to include MDT account
-    $bootstrapPath = "C:\DeploymentShare\Control\Bootstrap.ini"
-    if (Test-Path($bootstrapPath)) { Remove-Item $bootstrapPath -Force }
-    Add-Content -Path $bootstrapPath -Value "[Settings]`r`nPriority=Default`r`n[Default]`r`nDeployRoot=\\$env:computername\DS" -Force
-    Add-Content -Path $bootstrapPath -Value "`r`nSkipBDDWelcome=YES" -Force
-    Add-Content -Path $bootstrapPath -Value "`r`nUserDomain=PDEPLOY`r`nUserID=MDT`r`nUserpassword=P@ssw0rd" -Force
-
-    # Use imagemagick to create custom PE wallpaper incl. date
-    If (Test-Path "$env:ProgramFiles\imagemagick*") {
-    $imagemagick = (dir "$env:ProgramFiles\imagemagick*\magick.exe").FullName
-    $datestamp, $architecture = (Get-Date -format "dd-MMM-yyyy HH:mm"), "x64"
-    $fontsize, $fontfamily, $fontstyle, $fontcolor = "14", "Tahoma", "Normal", "Blue"
-    $convertstring = 'convert "C:\Program Files\Microsoft Deployment Toolkit\Samples\Background.bmp"'+`
-    ' -resize "1024x768" -font "'+$fontfamily+'" -style "'+$fontstyle+'" -fill "'+$fontcolor+'" -pointsize "'+$fontsize+`
-    '" -draw "text 850,180 '''+$architecture+' @ '+$datestamp+'''" "C:\DeploymentShare\Background.bmp"'
-    Start-Process -FilePath $imagemagick -ArgumentList $convertstring -Wait -NoNewWindow
-    }
-
-    # Update PE settings.xml
-    $path = "$env:SystemDrive\DeploymentShare\Control\Settings.xml"
-    $xml = [xml](Get-Content $path)
-    $xml.Settings."SupportX86" = "False"
-    $xml.Settings."Boot.x64.ScratchSpace" = "512"
-    $xml.Settings."Boot.x64.BackgroundFile" = "$env:SystemDrive\DeploymentShare\Background.bmp"
-    $xml.Settings."Boot.x64.SelectionProfile" = "Nothing"
-    $xml.Save($path)
-    # Perform MDT update
-    update-MDTDeploymentShare -path "DS001:"
-
-    # Create custom folders in MDT
-    $Folders = ("Win 7x86","Win 7x64","Win 10x64")
-    ForEach ($a in $Folders ) { AddFolder -xmlPath "$env:SystemDrive\DeploymentShare\Control\ApplicationGroups.xml" -nodeName $a}
-    ForEach ($a in $Folders ) { AddFolder -xmlPath "$env:SystemDrive\DeploymentShare\Control\DriverGroups.xml" -nodeName $a}
-    ForEach ($a in $Folders ) { AddFolder -xmlPath "$env:SystemDrive\DeploymentShare\Control\OperatingSystemGroups.xml" -nodeName $a}
-    $Folders = ("Win 7x86","Win 7x64","Win 10x64","Win 7x86\Deploy","Win 7x64\Deploy","Win 10x64\Deploy","Win 7x86\Capture","Win 7x64\Capture","Win 10x64\Capture","Development")
-    ForEach ($a in $Folders ) { AddFolder -xmlPath "$env:SystemDrive\DeploymentShare\Control\TaskSequenceGroups.xml" -nodeName $a}
-
-    # Copy ISO out to host share
-    If (Test-Path "$env:SystemDrive\vagrant_data") {
-    Copy-Item -Path "$env:SystemDrive\DeploymentShare\Boot\LiteTouchPE_x64.iso" -Destination "$env:SystemDrive\vagrant_data" -Force
-    }
-}
-
-function DCRoleInstall {
-    $SafeModeAdministratorPasswordText = "P@ssw0rd"
-    $SafeModeAdministratorPassword = ConvertTo-SecureString -AsPlainText $SafeModeAdministratorPasswordText -Force
-    Install-WindowsFeature AD-Domain-Services -IncludeManagementTools
-    Import-Module "$env:WinDir\system32\WindowsPowerShell\v1.0\Modules\ADDSDeployment\ADDSDeployment.psd1"
-    Install-ADDSForest -CreateDnsDelegation:$false -DatabasePath "$env:SystemDrive\Windows\NTDS" -DomainMode "Win2012R2" -DomainName "pdeploy.com" `
-     -DomainNetbiosName "pdeploy" -ForestMode "Win2012R2" -InstallDns:$true -LogPath "$env:SystemDrive\Windows\NTDS" -NoRebootOnCompletion:$true `
-     -SysvolPath "$env:SystemDrive\Windows\SYSVOL" -Force:$true -SafeModeAdministratorPassword $SafeModeAdministratorPassword
-}
-
-function AddtRoleInstall {
-    Add-ADGroupMember "Domain Admins" "vagrant"
-    Install-WindowsFeature -Name 'DHCP' -IncludeManagementTools
-    Install-WindowsFeature WDS -IncludeManagementTools
-}
-
-function AddtRoleConfig {
-    Start-Process -FilePath "cmd.exe" -ArgumentList "/c wdsutil /initialize-server /reminst:`"$env:SystemDrive\RemoteInstall`"" -Wait -NoNewWindow
-    Start-Process -FilePath "cmd.exe" -ArgumentList "/c wdsutil /set-server /answerclients:all" -Wait -NoNewWindow
-    Import-Module "$env:WinDir\system32\WindowsPowerShell\v1.0\Modules\DhcpServer\DhcpServer.psd1"
-    Add-DhcpServerv4Scope -Name "Bridged" -StartRange "192.168.50.100" -EndRange "192.168.50.250" -SubnetMask "255.255.255.0" -Description "Internal Network"
-    Add-DhcpServerInDC
-    Restart-Service -DisplayName "Windows Deployment Services Server"
-    Import-WdsBootImage -Path "$env:SystemDrive\DeploymentShare\Boot\LitetouchPE_x64.wim"
-}
-
-function CallRestart{
-    Param ([string]$nextPhase)
-    $commandLine = 'powershell.exe -File "'+$scriptPath+'" "'+$nextPhase+'" >> "\vagrant\debug.log" 2>&1'
-    Set-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "Continue Provisioning" -value $commandLine -Force
-    Restart-Computer -Force
-    Exit
-}
-
-function ClearRestart{
-    if (Test-RegistryValue -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Value "Continue Provisioning") {
-    Remove-ItemProperty -Path "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -Name "Continue Provisioning"
-    }
-}
-
-if ($Phase -eq "A") {
-    CallRestart -nextPhase "B"
-}
-
-if ($Phase -eq "B") {
-    ClearRestart
-    InstallChocoApps
-    MDTSetup
-    DCRoleInstall
-    CallRestart -nextPhase "C"
-}
-
-if ($Phase -eq "C") {
-    ClearRestart
-    AddtRoleInstall
-}
-
-Copy-Item -Path "\vagrant\debug.log" -Destination "\vagrant\complete.log" -Force
-[System.Reflection.Assembly]::LoadWithPartialName("System.Windows.Forms") 
-[System.Windows.Forms.MessageBox]::Show("Configuration is complete and ready for use.." , "Status")
+Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\MMDevices\Audio\Render\*\FxProperties' | `
+  ? { $_.Property -contains '{E0A941A0-88A2-4df5-8D6B-DD20BB06E8FB},4' } | `
+  % {
+    $oPermission = New-Object System.Security.AccessControl.RegistryAccessRule("BUILTIN\Administrators","FullControl","Allow")
+    $oAccessControl = $_.GetAccessControl([System.Security.AccessControl.AccessControlSections]::None)
+    $oAccessControl.SetOwner($oCurrentUser)
+    #$_.Close()
+    $_.SetAccessControl($AclRuleList)
+    #$_.SetValue('TestName', '1', [Microsoft.Win32.RegistryValueKind]::DWORD)
+  }
