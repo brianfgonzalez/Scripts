@@ -1,14 +1,14 @@
 ﻿#Check for internet connection
 If (-NOT ([Activator]::CreateInstance([Type]::GetTypeFromCLSID([Guid]'{DCB00C01-570F-4A9B-8D69-199FDBA5723B}')).IsConnectedToInternet))
 {
-    Write-Warning “You do not have Administrator rights to run this script!`nPlease re-run this script as an Administrator!”
+    Write-Warning "Script requires a connection to the internet!"
     Break
 }
 #Check for admin rights
 If (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(`
     [Security.Principal.WindowsBuiltInRole] “Administrator”))
 {
-    Write-Warning "Script requires a connection to the internet!"
+    Write-Warning “You do not have Administrator rights to run this script!`nPlease re-run this script as an Administrator!”
     Break
 }
 
