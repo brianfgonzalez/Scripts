@@ -138,7 +138,7 @@ $oCabFiles | Sort-Object id -Unique | ? { $_.name -imatch "\d{1,2}(x64|x86)_.*\.
     #pull model from name
     $oCabModel = $oCabRoot.AppendChild($oXml.CreateElement('model'))
     ('{0}' -f $_.name) -imatch "PDP_([a-z\-0-9]*)"
-    $oCabModel.InnerXml = (('{0}' -f $matches[1]) -ireplace "(FZ\-|CF\-)","" -ireplace "MK","mk")
+    $oCabModel.InnerXml = (('{0}' -f $matches[1]) -ireplace "(FZ|CF|\-)","" -ireplace "MK","mk")
 
     #pull os from name
     $oCabOs = $oCabRoot.AppendChild($oXml.CreateElement('os'))
@@ -202,3 +202,14 @@ $aOcbFiles = $aOcbFiles | Sort-Object id -Unique | ? { $_.name -imatch ".*MK\d-\
     $oOcbOs.InnerXml = (('{0}' -f $_.createdTime) -split "T")[0]
 }
 $oXml.save($sOcbsXmlPath)
+
+#Build csv file displaying what files are missing on our Ftp
+[xml]$oXml = Get-Content -Path $sCabsXmlPath
+$oXml.cabs.ChildNodes | % { if (-not ([bool]($_.PSobject.Properties.name -match "ftplink"))) { $_ } } | `
+% { Add-Member -InputObject $_ -NotePropertyName 'gdriveurl' -NotePropertyValue $_.googlelink.'#cdata-section'; $_ } | `
+sort date -Descending | select name,gdriveurl,date,size | Export-Csv -Path "$env:USERPROFILE\Desktop\MissingOnFtp.csv" -NoTypeInformation
+
+[xml]$oXml = Get-Content -Path $sOcbsXmlPath
+$oXml.ocbs.ChildNodes | % { if (-not ([bool]($_.PSobject.Properties.name -match "ftplink"))) { $_ } } | `
+% { Add-Member -InputObject $_ -NotePropertyName 'gdriveurl' -NotePropertyValue $_.googlelink.'#cdata-section'; $_ } | `
+sort date -Descending | select name,gdriveurl,date,size | Export-Csv -Path "$env:USERPROFILE\Desktop\MissingOnFtp.csv" -Append -NoTypeInformation

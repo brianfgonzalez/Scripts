@@ -49,4 +49,4 @@ Set-Location "$sLocalRepo"
 }
 
 #fInitialSetup
-fPerformSync -sCommitTag "Updated cabs and ocb XML files"
+fPerformSync -sCommitTag "Added date to search results for ocb and cab"
