@@ -49,4 +49,4 @@ Set-Location "$sLocalRepo"
 }
 
 #fInitialSetup
-fPerformSync -sCommitTag "Added date to search results for ocb and cab"
+fPerformSync -sCommitTag "Corrected issue with FTP and Google Links not populating."
