@@ -108,7 +108,7 @@ if(!($sRefreshToken)){
 $t = 'https://www.googleapis.com/drive/v3/files?'
 #Build query uri pre-encoded, i used "https://developers.google.com/apis-explorer/#p/drive/v3/drive.files.list" to build query string
 $y = 'corpus=user&pageSize=1000&q=name+contains+%22PDP%22+and+fileExtension%3D%22cab%22&'+`
-    'spaces=drive&fields=files(fileExtension%2Cid%2Cname%2Csize%2Cmd5Checksum%2CcreatedTime)%2CnextPageToken'
+    'spaces=drive&fields=files(fileExtension%2Cid%2Cname%2Csize%2Cmd5Checksum%2CcreatedTime%2Cparents)%2CnextPageToken'
 $oCabResults = (Invoke-RestMethod ('{0}{1}' -f $t,$y) -Headers @{"Authorization" = "Bearer $sAccessToken"})
 $oCabFiles = $oCabResults.files
 $sMore = $oCabResults.nextPageToken
@@ -146,6 +146,8 @@ $oCabFiles | Sort-Object id -Unique | ? { $_.name -imatch "\d{1,2}(x64|x86)_.*\.
 
     $oCabOs = $oCabRoot.AppendChild($oXml.CreateElement('md5'))
     $oCabOs.InnerXml = $_.md5Checksum
+    $oCabOs = $oCabRoot.AppendChild($oXml.CreateElement('parents'))
+    $oCabOs.InnerXml = $_.parents
     $oCabOs = $oCabRoot.AppendChild($oXml.CreateElement('size'))
     $oCabOs.InnerXml = $_.size
     $oCabOs = $oCabRoot.AppendChild($oXml.CreateElement('date'))
@@ -159,7 +161,7 @@ $oXml.save($sCabsXmlPath)
 $t = 'https://www.googleapis.com/drive/v3/files?'
 #Build uri pre-encoded, i used "https://developers.google.com/apis-explorer/#p/drive/v3/drive.files.list" to build query string
 $y = 'corpus=user&pageSize=1000&q=fileExtension%3D%22exe%22&'+`
-    'spaces=drive&fields=files(fileExtension%2Cid%2Cname%2Csize%2Cmd5Checksum%2CcreatedTime)%2CnextPageToken'
+    'spaces=drive&fields=files(fileExtension%2Cid%2Cname%2Csize%2Cmd5Checksum%2CcreatedTime%2Cparents)%2CnextPageToken'
 $oOcbResults = (Invoke-RestMethod ('{0}{1}' -f $t,$y) -Headers @{"Authorization" = "Bearer $sAccessToken"})
 $aOcbFiles = $oOcbResults.files
 $sMore = $oOcbResults.nextPageToken
@@ -195,6 +197,8 @@ $aOcbFiles = $aOcbFiles | Sort-Object id -Unique | ? { $_.name -imatch ".*MK\d-\
 
     $oOcbOs = $oOcbRoot.AppendChild($oXml.CreateElement('md5'))
     $oOcbOs.InnerXml = $_.md5Checksum
+    $oOcbOs = $oOcbRoot.AppendChild($oXml.CreateElement('parents'))
+    $oOcbOs.InnerXml = $_.parents
     $oOcbOs = $oOcbRoot.AppendChild($oXml.CreateElement('size'))
     $oOcbOs.InnerXml = $_.size
     $oOcbOs = $oOcbRoot.AppendChild($oXml.CreateElement('date'))

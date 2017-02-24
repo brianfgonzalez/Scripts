@@ -1,0 +1,66 @@
+<job id="ZTICheckBattery">
+	<script language="VBScript" src="ZTIUtility.vbs"/>
+	<script language="VBScript">
+' // ***************************************************************************
+' // 
+' // Copyright (c) Microsoft Corporation.  All rights reserved.
+' // 
+' // Microsoft Deployment Toolkit Solution Accelerator
+' //
+' // File:      ZTICheckBattery.wsf
+' // 
+' // Version:   6.3.8443.1000
+' // 
+' // Purpose:   Checks and logs if battery is plugged in.
+' // 
+' // Usage:     cscript.exe [//nologo] ZTICheckBattery.wsf [/debug:true]
+' // 
+' // ***************************************************************************
+Option Explicit
+RunNewInstance
+
+'//----------------------------------------------------------------------------
+'//  Global Constants
+'//----------------------------------------------------------------------------
+
+' No constants are required
+
+
+'//----------------------------------------------------------------------------
+'//  Main Class
+'//----------------------------------------------------------------------------
+Class ZTICheckBattery
+	'//----------------------------------------------------------------------------
+	'//  Class instance variable declarations
+	'//----------------------------------------------------------------------------
+	' No instance variables are required
+
+	'//----------------------------------------------------------------------------
+	'//  Constructor to initialize needed global objects
+	'//----------------------------------------------------------------------------
+	Private Sub Class_Initialize
+		' No initialization is required
+	End Sub
+
+	'//----------------------------------------------------------------------------
+	'//  Main routine
+	'//----------------------------------------------------------------------------
+	Function Main
+		Dim iRetVal,iResult,colBatteries,oWMI,Item
+		iRetVal = Success
+		'//----------------------------------------------------------------------------
+		'//  See what we need to do
+		'//----------------------------------------------------------------------------
+		Set oWMI = GetObject("winmgmts:\\.\root\cimv2")
+		Set colBatteries = oWMI.ExecQuery("Select * From Win32_Battery")
+		oLogging.CreateEntry "Checking to determine if computer is plugged in...", LogTypeInfo
+		For each Item in colBatteries
+			While Item.BatteryStatus <> 2
+			  oLogging.CreateEntry "The computer is not plugged in, tossing prompt.  Battery status is " & Item.batterystatus, LogTypeError
+			  MsgBox "Plug into AC and hit OK to continue..", 0
+			Wend
+		Next
+	End Function
+End Class
+	</script>
+</job>

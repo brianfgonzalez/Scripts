@@ -49,4 +49,4 @@ Set-Location "$sLocalRepo"
 }
 
 #fInitialSetup
-fPerformSync -sCommitTag "Corrected issue with FTP and Google Links not populating."
+fPerformSync -sCommitTag "Updated CABs and OCBs xml placing depricated cabs in trash on gdrive."
