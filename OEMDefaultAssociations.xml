@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DefaultAssociations>
+  <Association Identifier=".3gp2" ProgId="WMP11.AssocFile.3G2" ApplicationName="Windows Media Player" />
+  <Association Identifier=".acrobatsecuritysettings" ProgId="AcroExch.acrobatsecuritysettings" ApplicationName="Adobe Acrobat Reader DC" />
+  <Association Identifier=".fdf" ProgId="AcroExch.FDFDoc" ApplicationName="Adobe Acrobat Reader DC" />
+  <Association Identifier=".htm" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+  <Association Identifier=".html" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+  <Association Identifier=".MP2" ProgId="WMP11.AssocFile.MP3" ApplicationName="Windows Media Player" />
+  <Association Identifier=".mpeg" ProgId="WMP11.AssocFile.mpeg" ApplicationName="Windows Media Player" />
+  <Association Identifier=".oxps" ProgId="Windows.XPSReachViewer" ApplicationName="XPS Viewer" />
+  <Association Identifier=".pdf" ProgId="AcroExch.Document.DC" ApplicationName="Adobe Acrobat Reader DC" />
+  <Association Identifier=".pdfxml" ProgId="AcroExch.pdfxml" ApplicationName="Adobe Acrobat Reader DC" />
+  <Association Identifier=".pdx" ProgId="PDXFileType" ApplicationName="Adobe Acrobat Reader DC" />
+  <Association Identifier=".shtml" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+  <Association Identifier=".tif" ProgId="PhotoViewer.FileAssoc.Tiff" ApplicationName="Windows Photo Viewer" />
+  <Association Identifier=".tiff" ProgId="PhotoViewer.FileAssoc.Tiff" ApplicationName="Windows Photo Viewer" />
+  <Association Identifier=".txt" ProgId="txtfile" ApplicationName="Notepad" />
+  <Association Identifier=".url" ProgId="IE.AssocFile.URL" ApplicationName="Internet Browser" />
+  <Association Identifier=".webp" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+  <Association Identifier=".website" ProgId="IE.AssocFile.WEBSITE" ApplicationName="Internet Explorer" />
+  <Association Identifier=".xdp" ProgId="AcroExch.XDPDoc" ApplicationName="Adobe Acrobat Reader DC" />
+  <Association Identifier=".xfdf" ProgId="AcroExch.XFDFDoc" ApplicationName="Adobe Acrobat Reader DC" />
+  <Association Identifier=".xht" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+  <Association Identifier=".xhtml" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+  <Association Identifier=".xps" ProgId="Windows.XPSReachViewer" ApplicationName="XPS Viewer" />
+  <Association Identifier="ACROBAT" ProgId="acrobat" ApplicationName="Adobe Acrobat Reader DC" />
+  <Association Identifier="bingmaps" ProgId="AppXp9gkwccvk6fa6yyfq3tmsk8ws2nprk1p" ApplicationName="Maps" />
+  <Association Identifier="FTP" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+  <Association Identifier="http" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+  <Association Identifier="https" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+  <Association Identifier="IRC" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+  <Association Identifier="mailto" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+  <Association Identifier="MMS" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+  <Association Identifier="NEWS" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+  <Association Identifier="NNTP" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+  <Association Identifier="SMS" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+  <Association Identifier="SMSTO" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+  <Association Identifier="TEL" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+  <Association Identifier="URN" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+  <Association Identifier="WEBCAL" ProgId="ChromeHTML" ApplicationName="Google Chrome" />
+</DefaultAssociations>
