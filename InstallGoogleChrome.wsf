@@ -1,0 +1,42 @@
+<job id="InstallGoogleChrome">
+   <script language="VBScript" src="../../Scripts/ZTIUtility.vbs"/>
+   <script language="VBScript">
+' // ***************************************************************************
+' // 
+' // Copyright (c) Microsoft Corporation.  All rights reserved.
+' // 
+' // Microsoft Deployment Toolkit Solution Accelerator
+' //
+' // File:      InstallGoogleChrome.wsf
+' // 
+' // Version:   6.3.8443.1000
+' // 
+' // Purpose:   Use Dism to force apply start screen layout.
+' // 
+' // Usage:     cscript InstallGoogleChrome.wsf [/debug:true] [/UDI]
+' // 
+' // ***************************************************************************
+Option Explicit
+RunNewInstance
+'//----------------------------------------------------------------------------
+'//  Main Class
+'//----------------------------------------------------------------------------
+Class InstallGoogleChrome
+  '//----------------------------------------------------------------------------
+  '//  Main routine
+  '//----------------------------------------------------------------------------
+  Function Main
+    '//----------------------------------------------------------------------------
+    '//  Declare variables
+    '//----------------------------------------------------------------------------
+    Dim iRetVal,iRC
+    iRetVal = Success
+    '//----------------------------------------------------------------------------
+    '//  Install Google Chrome MSI
+    '//----------------------------------------------------------------------------
+    oLogging.CreateEntry "Install Google Chrome MSI.", LogTypeInfo
+	iRC = oUtility.RunWithHeartbeat("msiexec.exe /i """ & oUtility.ScriptDir & "\googlechromestandaloneenterprise64.msi"" /qn /l* """ & oUtility.LogPath & "\GoogleChromeMSI.log""")
+  End Function
+End Class
+    </script>
+</job>

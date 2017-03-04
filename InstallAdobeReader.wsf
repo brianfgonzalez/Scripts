@@ -1,4 +1,4 @@
-<job id="ZTIStartLayoutConfig">
+<job id="InstallAdobeReader">
    <script language="VBScript" src="../../Scripts/ZTIUtility.vbs"/>
    <script language="VBScript">
 ' // ***************************************************************************
@@ -7,13 +7,13 @@
 ' // 
 ' // Microsoft Deployment Toolkit Solution Accelerator
 ' //
-' // File:      ZTIStartLayoutConfig.wsf
+' // File:      InstallAdobeReader.wsf
 ' // 
 ' // Version:   6.3.8443.1000
 ' // 
 ' // Purpose:   Use Dism to force apply start screen layout.
 ' // 
-' // Usage:     cscript ZTIStartLayoutConfig.wsf [/debug:true] [/UDI]
+' // Usage:     cscript InstallAdobeReader.wsf [/debug:true] [/UDI]
 ' // 
 ' // ***************************************************************************
 Option Explicit
@@ -21,34 +21,26 @@ RunNewInstance
 '//----------------------------------------------------------------------------
 '//  Main Class
 '//----------------------------------------------------------------------------
-Class ZTIStartLayoutConfig
+Class InstallAdobeReader
   '//----------------------------------------------------------------------------
   '//  Main routine
   '//----------------------------------------------------------------------------
   Function Main
-  
     '//----------------------------------------------------------------------------
     '//  Declare variables
     '//----------------------------------------------------------------------------
-    Dim iRetVal,iRC
-    
+    Dim iRetVal
     iRetVal = Success
     '//----------------------------------------------------------------------------
-    '//  Copying StartLayout.xml file
+    '//  Install Adobe Reader MSI Base
     '//----------------------------------------------------------------------------
-    oLogging.CreateEntry "Copying StartLayout.xml to Windows\System32.", LogTypeInfo
-    oFileHandling.CopyFile oUtility.ScriptDir & "\StartLayout.xml", oEnv("SystemDrive") & "\Windows\System32\StartLayout.xml", true
+    oLogging.CreateEntry "Install Adobe Reader Base MSI.", LogTypeInfo
+	iRetVal = oUtility.RunWithHeartbeat("msiexec.exe /i """ & oUtility.ScriptDir & "\AcroRead.msi"" DISABLE_ARM_SERVICE_INSTALL=1 EULA_ACCEPT=YES DISABLEDESKTOPSHORTCUT=1 UPDATE_MODE=0 /qn /l* """ & oUtility.LogPath & "\AdobeReaderMSI.log""")
     '//----------------------------------------------------------------------------
-    '//  Copy Desired lnk files to %ALLUSERSPROFILES%
+    '//  Install Adobe Reader MSP Update
     '//----------------------------------------------------------------------------
-    oLogging.CreateEntry "Copy Desired lnk files to %ALLUSERSPROFILES%.", LogTypeInfo
-    oFileHandling.CopyFile oUtility.ScriptDir & "\File Explorer.lnk", oEnv("AllUsersProfile") & "\Microsoft\Windows\Start Menu\Programs\System Tools\File Explorer.lnk", true
-    oFileHandling.CopyFile oUtility.ScriptDir & "\Internet Explorer.lnk", oEnv("AllUsersProfile") & "\Microsoft\Windows\Start Menu\Programs\Accessories\Internet Explorer.lnk", true
-    '//----------------------------------------------------------------------------
-    '//  Apply start screen layout using Dism
-    '//----------------------------------------------------------------------------
-    oLogging.CreateEntry "Importing StartLayout.xml using Powershell's Import-StartLayout cmdlet.", LogTypeInfo
-    iRC = oUtility.RunWithConsoleLogging("powershell.exe -ExecutionPolicy ByPass -Command ""Import-StartLayout -MountPath " & oEnv("SystemDrive") & "\ -LayoutPath " & oEnv("WinDir") & "\System32\StartLayout.xml""")
+    oLogging.CreateEntry "Install Adobe Reader Update MSP.", LogTypeInfo
+	iRetVal = oUtility.RunWithHeartbeat("msiexec.exe /p """ & oUtility.ScriptDir & "\AcroRdrDCUpd1502320070.msp"" /qn /l* """ & oUtility.LogPath & "\AdobeReaderMSP.log""")
   End Function
 End Class
     </script>
