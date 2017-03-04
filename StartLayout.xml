@@ -9,7 +9,8 @@
 		<StartLayoutCollection>
 			<defaultlayout:StartLayout GroupCellWidth="6" xmlns:defaultlayout="http://schemas.microsoft.com/Start/2014/FullDefaultLayout">
 				<start:Group Name="Panasonic Apps" xmlns:start="http://schemas.microsoft.com/Start/2014/StartLayout">
-					<start:DesktopApplicationTile DesktopApplicationLinkPath="%ALLUSERSPROFILE%\Microsoft\Windows\Start Menu\Programs\Accessories\Internet Explorer.lnk" Size="2x2" Row="2" Column="0" />
+					<start:DesktopApplicationTile Size="2x2" Column="0" Row="0" DesktopApplicationLinkPath="%ALLUSERSPROFILE%\Microsoft\Windows\Start Menu\Programs\Accessories\Internet Explorer.lnk" />
+					<start:DesktopApplicationTile Size="2x2" Column="2" Row="0" DesktopApplicationLinkPath="%ALLUSERSPROFILE%\Microsoft\Windows\Start Menu\Programs\Google Chrome.lnk" />
 				</start:Group>
 			</defaultlayout:StartLayout>
 		</StartLayoutCollection>
