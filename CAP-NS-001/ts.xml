@@ -1,0 +1,119 @@
+<?xml version="1.0"?>
+<sequence version="3.00" name="Sysprep and Capture" description="Syspreps the System for capture and captures an image">
+  <globalVarList>
+    <variable name="OSGUID" property="OSGUID">{37143e94-6332-491e-a9a7-9dd417c6e329}</variable>
+    <variable name="DestinationDisk" property="DestinationDisk">0</variable>
+    <variable name="DestinationPartition" property="DestinationPartition">1</variable>
+    <variable name="DestinationOSVariable" property="DestinationOSVariable"></variable>
+    <variable name="DestinationOSRefresh" property="DestinationOSRefresh"></variable>
+    <variable name="DestinationOSDriveLetter" property="DestinationOSDriveLetter"></variable>
+    <variable name="DestinationOSInstallType" property="DestinationOSInstallType">ByDiskPartition</variable>
+    <variable name="OSGUID" property="OSGUID">{37143e94-6332-491e-a9a7-9dd417c6e329}</variable>
+  </globalVarList>
+  <group name="Capture Image" disable="false" continueOnError="false" expand="true" description="">
+    <condition></condition>
+    <step type="BDD_Gather" name="Gather local only" disable="false" continueOnError="false" successCodeList="0 3010" description="" startIn="">
+      <defaultVarList>
+        <variable name="GatherLocalOnly" property="GatherLocalOnly">true</variable>
+        <variable name="RulesFile" property="RulesFile"></variable>
+      </defaultVarList>
+      <action>cscript.exe "%SCRIPTROOT%\ZTIGather.wsf"</action>
+    </step>
+    <step type="SMS_TaskSequence_SetVariableAction" name="Set Image Build" description="" disable="false" continueOnError="false" successCodeList="0 3010">
+      <defaultVarList>
+        <variable name="VariableName" property="VariableName">ImageBuild</variable>
+        <variable name="VariableValue" property="VariableValue">%OSCURRENTVERSION%</variable>
+      </defaultVarList>
+      <action>cscript.exe "%SCRIPTROOT%\ZTISetVariable.wsf"</action>
+    </step>
+    <step type="SMS_TaskSequence_SetVariableAction" name="Set ImageFlags" description="" disable="false" continueOnError="false" successCodeList="0 3010">
+      <defaultVarList>
+        <variable name="VariableName" property="VariableName">ImageFlags</variable>
+        <variable name="VariableValue" property="VariableValue">%OSSKU%</variable>
+      </defaultVarList>
+      <action>cscript.exe "%SCRIPTROOT%\ZTISetVariable.wsf"</action>
+    </step>
+    <step type="SMS_TaskSequence_SetVariableAction" name="Set Phase" description="" disable="false" continueOnError="false" successCodeList="0 3010">
+      <defaultVarList>
+        <variable name="VariableName" property="VariableName">PHASE</variable>
+        <variable name="VariableValue" property="VariableValue">STATERESTORE</variable>
+      </defaultVarList>
+      <action>cscript.exe "%SCRIPTROOT%\ZTISetVariable.wsf"</action>
+    </step>
+    <step name="Configure" disable="true" continueOnError="false" successCodeList="0 3010" description="" startIn="">
+      <action>cscript.exe "%SCRIPTROOT%\ZTIConfigure.wsf"</action>
+      <defaultVarList>
+        <variable name="RunAsUser" property="RunAsUser">false</variable>
+        <variable name="SMSTSRunCommandLineUserName" property="SMSTSRunCommandLineUserName"></variable>
+        <variable name="SMSTSRunCommandLineUserPassword" property="SMSTSRunCommandLineUserPassword"></variable>
+        <variable name="LoadProfile" property="LoadProfile">false</variable>
+      </defaultVarList>
+    </step>
+    <step name="Apply Windows PE" disable="false" continueOnError="false" successCodeList="0 3010" description="" startIn="">
+      <action>cscript.exe "%SCRIPTROOT%\LTIApply.wsf" /PE /STAGE</action>
+      <defaultVarList>
+        <variable name="RunAsUser" property="RunAsUser">false</variable>
+        <variable name="SMSTSRunCommandLineUserName" property="SMSTSRunCommandLineUserName"></variable>
+        <variable name="SMSTSRunCommandLineUserPassword" property="SMSTSRunCommandLineUserPassword"></variable>
+        <variable name="LoadProfile" property="LoadProfile">false</variable>
+      </defaultVarList>
+      <condition></condition>
+    </step>
+    <step name="Apply Windows PE (BCD)" disable="false" continueOnError="false" successCodeList="0 3010" description="" startIn="">
+      <action>cscript.exe "%_SMSTSMDataPath%\Scripts\LTIApply.wsf" /PE /BCD</action>
+      <defaultVarList>
+        <variable name="RunAsUser" property="RunAsUser">false</variable>
+        <variable name="SMSTSRunCommandLineUserName" property="SMSTSRunCommandLineUserName"></variable>
+        <variable name="SMSTSRunCommandLineUserPassword" property="SMSTSRunCommandLineUserPassword"></variable>
+        <variable name="LoadProfile" property="LoadProfile">false</variable>
+      </defaultVarList>
+      <condition></condition>
+    </step>
+    <step type="SMS_TaskSequence_RebootAction" name="Restart computer" description="" disable="false" continueOnError="false" runIn="WinPEandFullOS" successCodeList="0 3010">
+      <defaultVarList>
+        <variable name="Message" property="Message" />
+        <variable name="MessageTimeout" property="MessageTimeout">60</variable>
+        <variable name="Target" property="Target" />
+      </defaultVarList>
+      <action>smsboot.exe /target:WinPE</action>
+    </step>
+    <step type="BDD_Gather" name="Gather local only" disable="false" continueOnError="false" successCodeList="0 3010" description="" startIn="">
+      <defaultVarList>
+        <variable name="GatherLocalOnly" property="GatherLocalOnly">true</variable>
+        <variable name="RulesFile" property="RulesFile"></variable>
+      </defaultVarList>
+      <action>cscript.exe "%SCRIPTROOT%\ZTIGather.wsf"</action>
+    </step>
+    <step name="Create WIM" disable="false" continueOnError="false" successCodeList="0 3010" description="" startIn="">
+      <action>cscript.exe "%SCRIPTROOT%\ZTIBackup.wsf"</action>
+      <defaultVarList>
+        <variable name="RunAsUser" property="RunAsUser">false</variable>
+        <variable name="SMSTSRunCommandLineUserName" property="SMSTSRunCommandLineUserName"></variable>
+        <variable name="SMSTSRunCommandLineUserPassword" property="SMSTSRunCommandLineUserPassword"></variable>
+        <variable name="LoadProfile" property="LoadProfile">false</variable>
+      </defaultVarList>
+    </step>
+  </group>
+  <step type="BDD_InstallOS" name="MDT DO NOT ENABLE OR DELETE" description="This is used only to get the Unattend files" disable="true" continueOnError="false" runIn="WinPEandFullOS" successCodeList="0 3010">
+    <defaultVarList>
+      <variable name="OSGUID" property="OSGUID">{37143e94-6332-491e-a9a7-9dd417c6e329}</variable>
+      <variable name="DestinationDisk" property="DestinationDisk">0</variable>
+      <variable name="DestinationPartition" property="DestinationPartition">1</variable>
+      <variable name="DestinationOSDriveLetter" property="DestinationOSDriveLetter"></variable>
+      <variable name="DestinationOSVariable" property="DestinationOSVariable"></variable>
+      <variable name="DestinationOSRefresh" property="DestinationOSRefresh"></variable>
+      <variable name="DestinationOSInstallType" property="DestinationOSInstallType">ByDiskPartition</variable>
+    </defaultVarList>
+    <action>cscript.exe "%SCRIPTROOT%\LTIApply.wsf"</action>
+  </step>
+  <globalVarList>
+    <variable name="OSGUID" property="OSGUID">{37143e94-6332-491e-a9a7-9dd417c6e329}</variable>
+    <variable name="DestinationDisk" property="DestinationDisk">0</variable>
+    <variable name="DestinationPartition" property="DestinationPartition">1</variable>
+    <variable name="DestinationOSVariable" property="DestinationOSVariable"></variable>
+    <variable name="DestinationOSRefresh" property="DestinationOSRefresh"></variable>
+    <variable name="DestinationOSDriveLetter" property="DestinationOSDriveLetter"></variable>
+    <variable name="DestinationOSInstallType" property="DestinationOSInstallType">ByDiskPartition</variable>
+    <variable name="OSGUID" property="OSGUID">{37143e94-6332-491e-a9a7-9dd417c6e329}</variable>
+  </globalVarList>
+</sequence>

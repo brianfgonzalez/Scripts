@@ -1,0 +1,71 @@
+<?xml version="1.0"?>
+<sequence version="3.00" name="Custom Task Sequence" description="Sample Custom Task Sequence">
+  <step type="BDD_Gather" name="Gather local only" description="" disable="false" continueOnError="false" runIn="WinPEandFullOS" successCodeList="0 3010">
+    <defaultVarList>
+      <variable name="GatherLocalOnly" property="GatherLocalOnly">true</variable>
+      <variable name="RulesFile" property="RulesFile"></variable>
+    </defaultVarList>
+    <action>cscript.exe "%SCRIPTROOT%\ZTIGather.wsf"</action>
+  </step>
+  <step type="SMS_TaskSequence_PartitionDiskAction" name="Format and Partition Disk" description="" disable="false" continueOnError="false" runIn="WinPEandFullOS" successCodeList="0 3010">
+    <defaultVarList>
+      <variable name="OSDDiskIndex" property="DiskIndex">0</variable>
+      <variable name="OSDDiskType" property="DiskType">BASIC</variable>
+      <variable name="DONotCreateExtraPartition" property="DONotCreateExtraPartition"></variable>
+      <variable name="OSDDiskPartDoNotRemoveOEMPartitions" property="OSDDiskPartDoNotRemoveOEMPartitions"></variable>
+      <variable name="OSDPartitions0Type" property="Partitions0Type">Primary</variable>
+      <variable name="OSDPartitions0FileSystem" property="Partitions0FileSystem">NTFS</variable>
+      <variable name="OSDPartitions0Bootable" property="Partitions0Bootable">True</variable>
+      <variable name="OSDPartitions0QuickFormat" property="Partitions0QuickFormat">True</variable>
+      <variable name="OSDPartitions0VolumeName" property="Partitions0VolumeName">Windows</variable>
+      <variable name="OSDPartitions0Size" property="Partitions0Size">100</variable>
+      <variable name="OSDPartitions0SizeUnits" property="Partitions0SizeUnits">%</variable>
+      <variable name="OSDPartitions0VolumeLetterVariable" property="Partitions0VolumeLetterVariable">OSDISK</variable>
+      <variable name="OSDPartitions" property="Partitions">1</variable>
+      <variable name="OSDPartitionStyle" property="PartitionStyle">MBR</variable>
+    </defaultVarList>
+    <action>cscript.exe "%SCRIPTROOT%\ZTIDiskpart.wsf"</action>
+  </step>
+  <step type="BDD_InstallOS" name="DO NOT DELETE THIS STEP" description="" disable="true" continueOnError="false" runIn="WinPEandFullOS" successCodeList="0 3010">
+    <defaultVarList>
+      <variable name="OSGUID" property="OSGUID">{368cfbbd-0743-49bb-a178-7eebe05da52d}</variable>
+      <variable name="DestinationDisk" property="DestinationDisk">0</variable>
+      <variable name="DestinationPartition" property="DestinationPartition">1</variable>
+      <variable name="DestinationOSVariable" property="DestinationOSVariable">OSDISK</variable>
+      <variable name="DestinationOSRefresh" property="DestinationOSRefresh"></variable>
+      <variable name="DestinationOSDriveLetter" property="DestinationOSDriveLetter"></variable>
+      <variable name="DestinationOSInstallType" property="DestinationOSInstallType">ByVariable</variable>
+    </defaultVarList>
+    <action>cscript.exe "%SCRIPTROOT%\LTIApply.wsf"</action>
+  </step>
+  <step type="SMS_TaskSequence_RunCommandLineAction" name="Expanding WimFile to C:\" description="DO NOT CHANGE THE NAME OF THIS STEP !" disable="false" continueOnError="false" startIn="" successCodeList="0 3010" runIn="WinPEandFullOS">
+    <defaultVarList>
+      <variable name="PackageID" property="PackageID"></variable>
+      <variable name="RunAsUser" property="RunAsUser">false</variable>
+      <variable name="SMSTSRunCommandLineUserName" property="SMSTSRunCommandLineUserName"></variable>
+      <variable name="SMSTSRunCommandLineUserPassword" property="SMSTSRunCommandLineUserPassword"></variable>
+      <variable name="LoadProfile" property="LoadProfile">false</variable>
+    </defaultVarList>
+    <action>cscript "%SCRIPTROOT%\LTIApplyNoSysprep.wsf"</action>
+  </step>
+  <step type="SMS_TaskSequence_RunCommandLineAction" name="Run Post-apply Configuration" description="" disable="false" continueOnError="false" startIn="" successCodeList="0 3010" runIn="WinPEandFullOS">
+    <defaultVarList>
+      <variable name="PackageID" property="PackageID"></variable>
+      <variable name="RunAsUser" property="RunAsUser">false</variable>
+      <variable name="SMSTSRunCommandLineUserName" property="SMSTSRunCommandLineUserName"></variable>
+      <variable name="SMSTSRunCommandLineUserPassword" property="SMSTSRunCommandLineUserPassword"></variable>
+      <variable name="LoadProfile" property="LoadProfile">false</variable>
+    </defaultVarList>
+    <action>cscript.exe "%ScriptRoot%\ZTIPostApplyNoSysprep.wsf"</action>
+  </step>
+  <globalVarList>
+    <variable name="OSGUID" property="OSGUID">{368cfbbd-0743-49bb-a178-7eebe05da52d}</variable>
+    <variable name="DestinationDisk" property="DestinationDisk">0</variable>
+    <variable name="DestinationPartition" property="DestinationPartition">1</variable>
+    <variable name="DestinationOSVariable" property="DestinationOSVariable">OSDISK</variable>
+    <variable name="DestinationOSRefresh" property="DestinationOSRefresh"></variable>
+    <variable name="DestinationOSDriveLetter" property="DestinationOSDriveLetter"></variable>
+    <variable name="DestinationOSInstallType" property="DestinationOSInstallType">ByVariable</variable>
+    <variable name="OSGUID" property="OSGUID">{368cfbbd-0743-49bb-a178-7eebe05da52d}</variable>
+  </globalVarList>
+</sequence>
