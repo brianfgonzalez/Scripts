@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+
+' // ***************************************************************************
+' // 
+' // Copyright (c) Microsoft Corporation.  All rights reserved.
+' // 
+' // Microsoft Deployment Toolkit Solution Accelerator
+' //
+' // File:      DeployWiz_SelectOS.xml
+' // 
+' // Version:   6.3.8443.1000
+' // 
+' // Purpose:
+' // 
+' // ***************************************************************************
+
+-->
+<Wizard>
+  <Global>
+    <CustomScript>DeployWiz_SelectOS.vbs</CustomScript>
+  </Global>
+  <Pane id="SelectOS" title="Select Operating System">
+    <Condition><![CDATA[FindTaskSequenceStep("//step[@name='Expanding WimFile to C:\']","LTIApplyNoSysprep.wsf")]]></Condition>
+    <Body><![CDATA[
+				<H1>Select a operating system to deploy on this computer.</H1>
+
+				<div class=TreeList id=OsListBox style="height: expression( GetDynamicListBoxSize(this) );">
+<label class=errmsg style="display: inline;" >No operating systems are available (OperatingSystems.xml does not exist, is empty, or is inaccessible)</label>
+					<!-- List goes here -->
+
+				</div>]]></Body>
+    <Initialization><![CDATA[fInitializeOsList]]></Initialization>
+    <Validation><![CDATA[fValidateOsList]]></Validation>
+  </Pane>
+</Wizard>

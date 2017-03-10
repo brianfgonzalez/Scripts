@@ -1,0 +1,71 @@
+<job id="ZTIPostApplyNoSysprep">
+   <script language="VBScript" src="ZTIUtility.vbs"/>
+   <script language="VBScript">
+' // ***************************************************************************
+' // 
+' // Copyright (c) Microsoft Corporation.  All rights reserved.
+' // 
+' // Microsoft Deployment Toolkit Solution Accelerator
+' //
+' // File:      ZTIPostApplyNoSysprep.wsf
+' // 
+' // Version:   6.3.8443.1000
+' // 
+' // Purpose:   Update ComputerName and add OemInfo to registry.
+' // 
+' // Usage:     cscript ZTIPostApplyNoSysprep.wsf [/debug:true] [/UDI]
+' // 
+' // ***************************************************************************
+Option Explicit
+RunNewInstance
+'//----------------------------------------------------------------------------
+'//  Main Class
+'//----------------------------------------------------------------------------
+Class ZTIPostApplyNoSysprep
+  '//----------------------------------------------------------------------------
+  '//  Main routine
+  '//----------------------------------------------------------------------------
+  Function Main
+    '//----------------------------------------------------------------------------
+    '//  Update ComputerName from mounted Wim's registry
+    '//----------------------------------------------------------------------------
+    Dim iRetVal,sNewComputerName,sOrigComputerName,sOsFileName
+    iRetVal = Success
+	sNewComputerName = oEnvironment.Item("OsdComputerName")
+	oUtility.RunWithConsoleLogging "cmd.exe /c reg load HKLM\z " & oEnvironment.Item("OsDisk") & "\Windows\System32\config\system"
+	sOrigComputerName = oUtility.RegRead("HKEY_LOCAL_MACHINE\z\ControlSet001\Control\ComputerName\ComputerName\ComputerName")
+	oLogging.CreateEntry "Updating ComputerName from """ & sOrigComputerName & """ to """ & sNewComputerName & """.", LogTypeInfo
+	oUtility.RegWrite "HKEY_LOCAL_MACHINE\z\ControlSet001\Control\ComputerName\ActiveComputerName\ComputerName",sNewComputerName
+	oUtility.RegWrite "HKEY_LOCAL_MACHINE\z\ControlSet001\Control\ComputerName\ComputerName\ComputerName",sNewComputerName
+	oUtility.RegWrite "HKEY_LOCAL_MACHINE\z\ControlSet001\Services\Tcpip\Parameters\Hostname",sNewComputerName
+	oUtility.RegWrite "HKEY_LOCAL_MACHINE\z\ControlSet001\Services\Tcpip\Parameters\NV Hostname",sNewComputerName
+	oUtility.RegWrite "HKEY_LOCAL_MACHINE\z\ControlSet001\Services\lanmanserver\parameters\srvcomment",sNewComputerName
+	oUtility.RunWithConsoleLogging "cmd.exe /c reg unload HKLM\z"
+    '//----------------------------------------------------------------------------
+    '//  Add OEM Information to registry
+    '//----------------------------------------------------------------------------
+	oFileHandling.CopyFile oUtility.ScriptDir & "\nokia_logo.bmp",oEnvironment.Item("OsDisk") & "\Windows\System32\oemlogo.bmp",true
+	oFileHandling.CopyFile oUtility.ScriptDir & "\nokia_logo.bmp",oEnvironment.Item("OsDisk") & "\ProgramData\Microsoft\User Account Pictures\user.bmp",true
+	oUtility.RunWithConsoleLogging "cmd.exe /c reg load HKLM\z " & oEnvironment.Item("OsDisk") & "\Windows\System32\config\software"
+	oUtility.RegWrite "HKEY_LOCAL_MACHINE\z\Microsoft\Windows\CurrentVersion\OEMInformation\logo","C:\Windows\system32\oemlogo.bmp"
+	oUtility.RegWrite "HKEY_LOCAL_MACHINE\z\Microsoft\Windows\CurrentVersion\OEMInformation\Manufacturer",oEnvironment.Item("OsName")
+	oUtility.RegWrite "HKEY_LOCAL_MACHINE\z\Microsoft\Windows\CurrentVersion\OEMInformation\Model","Nokia Windows 7 x64"
+	oUtility.RegWrite "HKEY_LOCAL_MACHINE\z\Microsoft\Windows\CurrentVersion\OEMInformation\SupportURL","http://usnavsgtk01.ndc.lucent.com/rftoolslab/"
+	oUtility.RegWrite "HKEY_LOCAL_MACHINE\z\Microsoft\Windows\CurrentVersion\OEMInformation\SupportHours","9am-5pm"
+	oUtility.RegWrite "HKEY_LOCAL_MACHINE\z\Microsoft\Windows\CurrentVersion\OEMInformation\SupportPhone",""
+	oUtility.RunWithConsoleLogging "cmd.exe /c reg unload HKLM\z"
+	'//----------------------------------------------------------------------------
+    '//  Add mdtnew.bat batch script to system32
+    '//----------------------------------------------------------------------------
+	oFileHandling.CopyFile oUtility.ScriptDir & "\mdtnew.bat",oEnvironment.Item("OsDisk") & "\Windows\System32\mdtnew.bat",true
+	'//----------------------------------------------------------------------------
+    '//  Add LTIBootstrap.vbs script to RunOnce
+    '//----------------------------------------------------------------------------
+	'oUtility.RunWithConsoleLogging "cmd.exe /c reg load HKLM\z " & oEnvironment.Item("OsDisk") & "\Windows\System32\config\software"
+	'oFileHandling.CopyFile oUtility.ScriptDir & "\LTIBootstrap.vbs",oEnvironment.Item("OsDisk") & "\LTIBootstrap.vbs",true
+	'oUtility.RegWrite "HKEY_LOCAL_MACHINE\z\Microsoft\Windows\CurrentVersion\RunOnce\Litetouch","cscript C:\LTIBootstrap.vbs"
+	'oUtility.RunWithConsoleLogging "cmd.exe /c reg unload HKLM\z"
+  End Function
+End Class
+    </script>
+</job>

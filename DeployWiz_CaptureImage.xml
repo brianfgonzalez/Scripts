@@ -1,0 +1,105 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+
+' // ***************************************************************************
+' // 
+' // Copyright (c) Microsoft Corporation.  All rights reserved.
+' // 
+' // Microsoft Deployment Toolkit Solution Accelerator
+' //
+' // File:      DeployWiz_Definition_ENU.wsf
+' // 
+' // Version:   6.3.8443.1000
+' // 
+' // Purpose:   Main Client Deployment Wizard Defintion File
+' // 
+' // ***************************************************************************
+
+-->
+<Wizard>
+  <Global>
+    <CustomScript>DeployWiz_CaptureImage.vbs</CustomScript>
+  </Global>
+  <Pane id="CaptureImage" title="Capture Image">
+    <Body><![CDATA[
+	<H1>Specify whether to capture an image.</H1>
+	<table>
+
+	<tr>
+		<td valign="top">
+			<input type=radio name="DoCapture" id="CaptureRadio1" Value="YES" language=vbscript onclick=ValidateCapture  AccessKey=A>
+		</td>
+		<td>
+			<Label class="Larger" for=CaptureRadio1 language=vbscript >C<u class=larger>a</u>pture an image of this reference computer.</Label>
+			<br>
+
+			<div>Specify the UNC path where the image should be stored and the file name to use.</div>
+			<br>
+			<div><u>L</u>ocation:  <label class=ErrMsg for=ComputerBackupLocation>* Required (MISSING)</label></div>
+                        <div><label class=ErrMsg id="InvalidCaptureLocation">ERROR: Unable to connect to UNC path.</label></div>
+			<input type=text name="ComputerBackupLocation" id="ComputerBackupLocation" size=65 disabled language=vbscript AccessKey=L>
+			<br>
+			<div>File name:  <label class=ErrMsg for=BackupFile>* Required (MISSING)</label></div>
+			<input type=text name="BackupFile" id="BackupFile" size=65 disabled language=vbscript onpropertychange=ValidateCapture >
+			<br>&nbsp;
+		</td>
+	</tr>
+
+	<tr>
+		<td>
+			<input type=radio name="DoCapture" id="CaptureRadio2" value="SYSPREP" language=vbscript onclick=ValidateCapture AccessKey=S>
+		</td>
+		<td>
+			<Label class="Larger" for=CaptureRadio2 language=vbscript ><u class=larger>S</u>ysprep this computer.</Label>
+		</td>
+	</tr>
+	<tr>
+		<td></td>
+		<td>
+			<div>Initiate Sysprep for the operating system, but do not capture an image (useful when generating a VHD).</div>
+			<br>
+		</td>
+	</tr>
+
+
+	<tr>
+		<td>
+			<input type=radio name="DoCapture" id="CaptureRadio3" value="PREPARE" language=vbscript onclick=ValidateCapture  AccessKey=P>
+		</td>
+		<td>
+			<Label class="Larger" for=CaptureRadio3 language=vbscript ><u class=larger>P</u>repare to capture the machine.</Label>
+		</td>
+	</tr>
+	<tr>
+		<td></td>
+		<td>
+			<div>Copy the needed Sysprep files to the proper location, but do nothing else.</div>
+			<br>
+		</td>
+	</tr>
+
+
+	<tr>
+		<td>
+			<input type=radio name="DoCapture" id="CaptureRadio4" checked value="NO" language=vbscript onclick=ValidateCapture  AccessKey=O>
+		</td>
+		<td>
+			<Label class="Larger" for=CaptureRadio4 language=vbscript >Do n<u class=larger>o</u>t capture an image of this computer.</Label>
+		</td>
+	</tr>
+	<tr>
+		<td></td>
+		<td>
+			<div>This is a normal deployment, so an image does not need to be captured.</div>
+		</td>
+	</tr>
+
+	</table>
+		]]></Body>
+    <Validation><![CDATA[ValidateCapture]]></Validation>
+    <Validation><![CDATA[ValidateCaptureLocation]]></Validation>
+    <Initialization><![CDATA[InitializeCapture]]></Initialization>
+    <Condition><![CDATA[FindTaskSequenceStep("//step[@name='Create WIM']","ZTIBackup.wsf")]]></Condition>
+    <Condition><![CDATA[ Ucase(Property("SkipCapture"))<>"YES" and Property("JoinDomain")="" and Property("DeploymentType")<>"REPLACE"]]></Condition>
+  </Pane>
+</Wizard>
