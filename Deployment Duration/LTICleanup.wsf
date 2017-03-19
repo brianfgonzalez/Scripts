@@ -1,0 +1,734 @@
+<job id="LTICleanup">
+	<script language="VBScript" src="ZTIUtility.vbs"/>
+	<script language="VBScript" src="ZTIBCDUtility.vbs"/>
+	<script language="VBScript">
+
+' // ***************************************************************************
+' // 
+' // Copyright (c) Microsoft Corporation.  All rights reserved.
+' // 
+' // Microsoft Deployment Toolkit Solution Accelerator
+' //
+' // File:      LTICleanup.wsf
+' // 
+' // Version:   6.3.8443.1000
+' // 
+' // Purpose:   Clean up scripts, autologon, and other remnants of the
+' //            deployment process.
+' // 
+' // Usage:     cscript.exe [//nologo] LTICleanup.wsf [/debug:true]
+' // 
+' // ***************************************************************************
+
+Option Explicit
+Dim oLTICleanup
+Dim iScriptRC
+
+If Not oUtility.Arguments.Exists("DebugCapture") Then
+	On Error Resume Next
+End If
+
+Set oLTICleanup = New LTICleanup
+TestAndFail SUCCESS, 10000, "Create object: Set oLTICleanup = New LTICleanup"
+
+iScriptRc =  oLTICleanup.Main
+If iScriptRc <> SUCCESS then
+	'Do not call ProcessResults if the results were successful, oLTICleanup may have cleaned the log.
+	ProcessResults iScriptRc
+End if
+
+Wscript.quit iScriptRc
+
+
+ 
+'//----------------------------------------------------------------------------
+'//  Main Class
+'//----------------------------------------------------------------------------
+
+Class LTICleanup
+
+	Dim iErrors
+	Dim iWarnings
+	Dim sBuffer
+	Dim bFirst
+
+	'//----------------------------------------------------------------------------
+	'//  Main routine
+	'//----------------------------------------------------------------------------
+
+	Function Main
+	
+		Dim iRetVal, iRC
+		Dim sCmd
+		Dim arrDrives
+		Dim i
+		Dim sSystemDrive
+		Dim sArchiveDir
+		Dim oUnattend
+		Dim oNode
+		Dim sBootsect
+		Dim bOEM
+		Dim sproc
+		Dim sBDDUtility
+		Dim sMaxSize
+		Dim oResults
+'////////////
+		Dim sFilePath,oFile,sMinutesRunning
+'\\\\\\\\\\\\
+
+
+		' Get the deployment system drive
+
+		sSystemDrive = "C:"
+		For each oDrive in oFSO.Drives
+			If oDrive.DriveType = 2 then
+				If oDrive.IsReady Then
+					If (oFSO.FolderExists(oDrive.DriveLetter & ":\Windows") or oFSO.FolderExists(oDrive.DriveLetter & ":\Winnt")) and oDrive.DriveLetter<>"X" then
+
+						sSystemDrive = oDrive.DriveLetter & ":"
+						Exit For
+
+					End if
+				End If
+			End if
+		Next
+
+		bOEM = ucase(oEnvironment.Item("_DoNotCleanLiteTouch")) = "TRUE"
+
+		
+		' Figure out what directory to use
+
+		If oEnvironment.Item("OSVersion") = "WinPE" then
+			sArchiveDir = sSystemDrive & "\WINDOWS\TEMP"
+		Else
+			If sSystemDrive = oEnv("SystemDrive") then
+				sArchiveDir = oEnv("SystemRoot") & "\TEMP"
+			Else
+				sArchiveDir = sSystemDrive & "\WINDOWS\TEMP"
+			End if
+		End if
+
+
+		' Clean up any existing folder and then create the new one
+
+		If oFSO.FolderExists(sArchiveDir & "\DeploymentLogs") then
+			RemoveFolder sArchiveDir & "\DeploymentLogs"
+		End if
+		oUtility.VerifyPathExists sArchiveDir & "\DeploymentLogs"
+
+		
+		' Clean up Ramdisk entry
+
+		If BCDObjectExistsNoOutput(BDD_RAMDISK_GUID) then
+			RunBCDEdit "/delete " & BDD_RAMDISK_GUID & " /cleanup"
+			oLogging.CreateEntry "Removing BCDEdit", LogTypeInfo
+		End if 
+
+		
+		'//----------------------------------------------------------------------------
+		'//  Clear the autologon registry keys
+		'//----------------------------------------------------------------------------
+
+		oLogging.CreateEntry "Removing AutoAdminLogon registry entries", LogTypeInfo
+
+		On Error Resume Next
+		oShell.RegWrite "HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon\AutoAdminLogon", "0", "REG_SZ"
+		oShell.RegWrite "HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon\DefaultUserName", "", "REG_SZ"
+		oShell.RegWrite "HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon\DefaultDomainName", "", "REG_SZ"
+		oShell.RegDelete "HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon\DefaultPassword"
+		oShell.RegWrite "HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon\AutoLogonCount", &H00000000, "REG_DWORD"
+		On Error Goto 0
+
+
+		'//----------------------------------------------------------------------------
+		'//  Re-enable UAC for Administrator account (Windows 8 and above)
+		'//----------------------------------------------------------------------------
+
+		If oEnvironment.Item("OSCurrentVersion") <> "" then
+			oUtility.GetMajorMinorVersion(oEnvironment.Item("OSCurrentVersion"))
+			If ((oUtility.VersionMajor = 6 and oUtility.VersionMinor >= 2) or oUtility.VersionMajor >= 10 ) then
+				oLogging.CreateEntry "Re-enabling UAC for built-in Administrator account", LogTypeInfo
+				oShell.RegWrite "HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System\FilterAdministratorToken", 1, "REG_DWORD"
+			End if		
+		End if
+
+
+		'//----------------------------------------------------------------------------
+		'//  Reset AsyncRunOnce registry value with HideShell (Windows 10 and above)
+		'//----------------------------------------------------------------------------
+
+		If oEnvironment.Item("OSCurrentVersion") <> "" and UCase(oEnvironment.Item("HideShell")) = "YES" then
+			oUtility.GetMajorMinorVersion(oEnvironment.Item("OSCurrentVersion"))
+			If oUtility.VersionMajor >= 10 then
+				oLogging.CreateEntry "Re-enabling asynchronous RunOnce", LogTypeInfo
+				oShell.RegWrite "HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\Explorer\AsyncRunOnce", 1, "REG_DWORD"
+			End if		
+		End if
+
+
+		'//----------------------------------------------------------------------------
+		'//  Clear the windows 10 upgrade registry key
+		'//----------------------------------------------------------------------------
+		
+		if oEnvironment.Item("IsOSUpgrade") <> "" and oEnvironment.Item("IsOSUpgrade") = "1" then
+		 On Error Resume Next
+		 oLogging.CreateEntry "Removing Windows 10 Upgrade registry entry", LogTypeInfo
+		 oShell.RegDelete "HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Windows\Win10Upgrade"
+		End if
+		
+		'//----------------------------------------------------------------------------
+		'//  Define maximum size for VSS
+		'//----------------------------------------------------------------------------
+
+		sMaxSize = oEnvironment.item("VSSMaxSize")
+		If sMaxSize = "" then
+			oLogging.CreateEntry "VSSMaxSize not specified using 5% of volume.", LogTypeInfo
+			sMaxSize = "5%"
+		End if
+		
+
+		'//----------------------------------------------------------------------------
+		'//  Process the logs
+		'//----------------------------------------------------------------------------
+
+		'On Error Resume Next
+
+		iWarnings = 0
+		iErrors = 0
+
+
+		' Process the current log
+
+		ProcessLog oUtility.LogPath & "\" & oLogging.MasterLogFile
+
+
+		' No errors found in the master log file, but the task sequence failed?  If so, try to process the BDD.LOG in PE (?).
+
+		If oEnvironment.Item("RETVAL") <> "0" and (iErrors = 0 or iWarnings = 0) Then
+			ProcessLog "X:\MININT\SMSOSD\OSDLOGS\BDD.LOG"
+		End if
+
+
+		' If the task sequence failed, process the task sequence log
+
+		If oEnvironment.Item("RETVAL") <> "0" then
+
+			If oFSO.FileExists(oEnvironment.Item("SMSTSLogPath_Cache") & "\SMSTS.LOG") then
+				ProcessLog oEnvironment.Item("SMSTSLogPath_Cache") & "\SMSTS.LOG"
+			ElseIf oFSO.FileExists(oEnvironment.Item("_SMSTSLogPath") & "\SMSTS.LOG") then
+				ProcessLog oEnvironment.Item("_SMSTSLogPath") & "\SMSTS.LOG"
+			ElseIf oFSO.FileExists(oEnv("TEMP") & "\SMSTS.LOG") then
+				ProcessLog oEnv("TEMP") & "\SMSTS.LOG"
+			End if
+
+		End if
+'//////////////
+		' Pull Deployment Time from ComputerName.tag file.
+		sFilePath = oEnvironment.Item("DeployRoot") & "\Logs\" & oEnv("ComputerName") & ".tag"
+		If oFSO.FileExists(sFilePath) Then
+			set oFile = oFSO.GetFile(sFilePath)
+			sMinutesRunning = datediff("n", oFile.DateLastModified, now)
+		Else
+			sMinutesRunning = sFilePath & " not found"
+		End If
+'\\\\\\\\\\\\\\		
+		' Save the results
+
+		Set oResults = oUtility.CreateXMLDOMObject
+		oResults.LoadXml "<?xml version=""1.0"" ?><Results><Errors>" & iErrors & "</Errors><Warnings>" & _
+			iWarnings & "</Warnings><RetVal>" & oEnvironment.Item("RETVAL") & _
+			"</RetVal><DeploymentType>" & oEnvironment.Item("DeploymentType") & _
+			"</DeploymentType><Messages><![CDATA[" & sBuffer & "]]></Messages>" & _
+			"<DeploymentDuration>" & sMinutesRunning & "</DeploymentDuration>" & _
+			"</Results>"
+		oResults.Save oEnv("TEMP") & "\Results.xml"
+		oResults.Save sArchiveDir & "\DeploymentLogs\Results.xml"
+
+		On Error Goto 0
+
+
+		' Log the warnings and errors
+
+		oLogging.CreateEntry "Logs contained " & iErrors & " errors and " & iWarnings & " warnings.", LogTypeInfo
+
+
+		'//----------------------------------------------------------------------------
+		'//  Remove misc. folders
+		'//----------------------------------------------------------------------------
+
+		If not bOEM then
+			If oFSO.FolderExists(sSystemDrive & "\Deploy") then
+				RemoveFolder sSystemDrive & "\Deploy"
+			End if
+		End if
+
+		'//----------------------------------------------------------------------------
+		'//  Clean up the Windows PE image
+		'//----------------------------------------------------------------------------
+
+		If bOEM then
+
+			oLogging.CreateEntry "No Windows PE image to delete (OEM Scenario).", LogTypeInfo
+
+		Elseif oFSO.FileExists(sSystemDrive & "\sources\boot.wim") then
+
+			' First remove the BOOT.WIM
+			DeleteFile sSystemDrive & "\sources\boot.wim"
+
+
+			' Now if the sources folder is empty, remove it too.
+
+			If oFSO.GetFolder(sSystemDrive & "\sources").Files.Count = 0 and oFSO.GetFolder(sSystemDrive & "\sources").Subfolders.Count = 0 then
+				RemoveFolder sSystemDrive & "\sources"
+			Else
+				oLogging.CreateEntry "The " & sSystemDrive & "\sources folder is not empty, not removing.", LogTypeInfo
+			End if
+
+		Else
+
+			oLogging.CreateEntry "No Windows PE image to delete.", LogTypeInfo
+
+		End if
+
+
+		If oEnvironment.Item("OSVersion") = "WinPE" and UCase(oEnvironment.Item("DoCapture")) = "YES" then
+
+			' Put an unattend.xml file into place to automate OOBE
+
+			If oFSO.FileExists(sSystemDrive & "\minint\unattend.xml") and oFSO.FolderExists(sSystemDrive & "\windows\panther") then
+
+				oLogging.CreateEntry "Removing MDT commands from unattend.xml template.", LogTypeInfo
+
+
+				' Load the unattend.xml
+
+				Set oUnattend = oUtility.CreateXMLDOMObjectEx(sSystemDrive & "\minint\unattend.xml")
+				oUnattend.setProperty "SelectionNamespaces", "xmlns:unattend='urn:schemas-microsoft-com:unattend'"
+
+
+				' Strip out the AutoLogon and FirstLogonCommands
+
+				Set oNode = oUnattend.selectSingleNode("//unattend:settings[@pass='oobeSystem']/unattend:component[@name='Microsoft-Windows-Shell-Setup']/unattend:AutoLogon")
+				If not (oNode is Nothing) then
+					oNode.parentNode.removeChild oNode
+					oLogging.CreateEntry "Removed AutoLogon settings.", LogTypeInfo
+				End if
+
+				Set oNode = oUnattend.selectSingleNode("//unattend:settings[@pass='oobeSystem']/unattend:component[@name='Microsoft-Windows-Shell-Setup']/unattend:FirstLogonCommands")
+				If not (oNode is Nothing) then
+					oNode.parentNode.removeChild oNode
+					oLogging.CreateEntry "Removed FirstLogonCommands settings.", LogTypeInfo
+				End if
+
+
+				' Don't create the temporary account
+
+				Set oNode = oUnattend.selectSingleNode("//unattend:settings[@pass='oobeSystem']/unattend:component[@name='Microsoft-Windows-Shell-Setup']/unattend:UserAccounts/unattend:LocalAccounts")
+				If not (oNode is Nothing) then
+					oNode.parentNode.removeChild oNode
+					oLogging.CreateEntry "Removed LocalAccounts settings.", LogTypeInfo
+				End if
+
+
+				' Save the XML file
+
+				oUnattend.Save sSystemDrive & "\windows\panther\unattend.xml"
+
+				oLogging.CreateEntry "Modified unattend.xml saved to " & sSystemDrive & "\windows\panther\unattend.xml", LogTypeInfo
+
+			End if
+
+
+			If oFSO.FileExists(sSystemDrive & "\boot.ini") then  ' Apply the NT 5.2 boot sector so we boot back into XP
+
+				' Install a boot sector
+
+				iRc = oUtility.FindFile("bootsect.exe", sBootsect)
+				TestAndLog iRC, "FindFile: BootSect.exe"
+				If iRc = Success then
+
+					oLogging.CreateEntry "Executing BOOTSECT.EXE to install a boot sector", LogTypeInfo
+					iRc = oShell.Run("cmd.exe /c """"" & sBootsect & """ /nt52 c:""", 0, true)
+					oLogging.CreateEntry "BOOTSECT.EXE return code = " & iRc, LogTypeInfo
+					oLogging.CreateEntry "Boot sector updated, reboot is needed.", LogTypeInfo
+
+				End if
+
+
+				' Clean up c:\boot and bootmgr
+
+				If oFSO.FolderExists(sSystemDrive & "\boot") then
+					RemoveFolder sSystemDrive & "\Boot"
+				End if
+				If oFSO.FileExists(sSystemDrive & "\bootmgr") then
+					oFSO.DeleteFile sSystemDrive & "\bootmgr"
+				End if
+
+
+				' If necessary, clean up the GuiRunOnce entry after capturing an image
+
+				If oEnv("SystemDrive") = "X:" and oFSO.FileExists(sSystemDrive & "\sysprep\sysprep.inf") then
+
+					On Error Resume Next
+					oUtility.WriteIni sSystemDrive & "\sysprep\sysprep.inf", "GuiRunOnce", "", ""   ' Remove the section
+					If Err then
+						oLogging.CreateEntry "Unable to remove GuiRunOnce entry from sysprep.inf: " & Err.Description & " (" & Err.Number & ")", LogTypeInfo
+					End if
+
+					oUtility.WriteIni sSystemDrive & "\sysprep\sysprep.inf", "GuiUnattended", "AutoLogon", ""   ' Remove the item
+					oUtility.WriteIni sSystemDrive & "\sysprep\sysprep.inf", "GuiUnattended", "AutoLogonCount", ""   ' Remove the item
+					On Error Goto 0
+
+				End if
+
+			End if
+
+		End if
+
+
+		'//----------------------------------------------------------------------------
+		'//  Unmap connections to deployment share
+		'//----------------------------------------------------------------------------
+
+		oLogging.CreateEntry "Checking mapped network drive.", LogTypeInfo
+
+		'//On Error Resume Next
+		Set arrDrives = oNetwork.EnumNetworkDrives
+		TestAndLog Err = 0, "Enumerate Network Drives"
+
+		For i = 0 to arrDrives.Count - 1 Step 2
+				oLogging.CreateEntry "testing drive " & arrDrives.Item(i) & " mapped to " & arrDrives.Item(i+1), LogTypeInfo
+			If Instr(1, arrDrives.Item(i+1), oEnvironment.Item("DeployRoot"), 1) > 0 then
+
+				oLogging.CreateEntry "Disconnecting drive " & arrDrives.Item(i) & " mapped to " & arrDrives.Item(i+1), LogTypeInfo
+
+				' RemoveNetworkDrive didn't work, so we'll use "NET USE"
+
+				sCmd = "NET USE " & arrDrives.Item(i) & " /d /y"
+				iRc = oShell.Run( sCmd, 0, true)
+				TestAndLog iRC, "Run command: " & sCmd
+
+			End if
+		Next
+
+		On Error Goto 0
+
+
+		'//----------------------------------------------------------------------------
+		'//  Clean up the MININT directory
+		'//----------------------------------------------------------------------------
+
+		If oFSO.FolderExists(oUtility.LocalRootPath) then
+
+			Dim sTempFolder
+			Const TempFolder = 2
+
+			Set sTempFolder = oFSO.GetSpecialFolder(TempFolder)
+			oLogging.CreateEntry "Cleaning up " & oUtility.LocalRootPath & " directory.", LogTypeInfo
+
+
+			' Change the working directory
+
+			oShell.CurrentDirectory = sTempFolder
+
+
+			' If debugging, keep the VARIABLES.DAT.  Otherwise, delete it.
+
+			If oLogging.Debug then
+
+				If oFSO.FileExists(oUtility.LogPath & "\VARIABLES.save") then
+					DeleteFile oUtility.LogPath & "\VARIABLES.save"
+				End if
+
+				MoveFile oUtility.LogPath & "\VARIABLES.DAT", oUtility.LogPath & "\VARIABLES.save"
+
+				' Copy the Unattend.xml
+
+				If oFSO.FileExists(oUtility.LocalRootPath & "\Unattend.xml") then
+					CopyFile oUtility.LocalRootPath & "\Unattend.xml", oUtility.LogPath & "\Unattend.xml", true
+				End if
+
+			Else
+
+				If oFSO.FileExists(oUtility.LogPath & "\VARIABLES.DAT") then
+					DeleteFile oUtility.LogPath & "\VARIABLES.DAT"
+				End if
+
+			End if
+			
+			
+			For each oDrive in oFSO.Drives
+				If oDrive.DriveType = 2 and oDrive.DriveLetter<>"X" then
+					If oDrive.IsReady Then
+						If OFSO.FolderExists(ODrive.DriveLetter & ":\_SMSTASKSEQUENCE") then
+							On Error Resume Next
+							oFSO.DeleteFolder oDrive.DriveLetter & ":\_SMSTASKSEQUENCE", true
+							On Error Goto 0
+
+							Exit For
+						End if
+					End If
+				End if
+			Next
+
+
+			' Remove the tool directories
+
+			oLogging.CreateEntry "Cleaning up TOOLS, SCRIPTS, and PACKAGES directories.", LogTypeInfo
+			On Error Resume Next
+			DeleteFile oUtility.LocalRootPath & "\unattend.xml"
+			DeleteFile oUtility.LocalRootPath & "\unattend.txt"
+			DeleteFile oUtility.LocalRootPath & "\TOOLS\x86\ts.xml"
+			DeleteFile oUtility.LocalRootPath & "\TOOLS\x64\ts.xml"
+			DeleteFile oUtility.LocalRootPath & "\TOOLS\x86\variables.dat"
+			DeleteFile oUtility.LocalRootPath & "\TOOLS\x64\variables.dat"
+			RemoveFolder oUtility.LocalRootPath & "\SCRIPTS"
+			RemoveFolder oUtility.LocalRootPath & "\PACKAGES"
+			RemoveFolder oUtility.LocalRootPath & "\TOOLS"
+			RemoveFolder oUtility.LocalRootPath & "\USMT"
+
+			If oFSO.FolderExists(sArchiveDir) then
+			
+				' Copy the logs to \WINDOWS\TEMP\DeploymentLogs
+
+				CopyFolder oUtility.LogPath, sArchiveDir & "\DeploymentLogs", true
+
+
+				' Move the StateStore directory, if one exists
+
+				If oEnvironment.Item("OSDStateStorePath") <> "" then
+					If oFSO.FolderExists(oEnvironment.Item("OSDStateStorePath")) and Left(oEnvironment.Item("OSDStateStorePath"), 2) <> "\\" then
+
+						If oFSO.FolderExists(sArchiveDir & "\StateStore") then
+							On Error Resume Next
+							oFSO.DeleteFolder sArchiveDir & "\StateStore"
+							' Do not log error
+							On Error Goto 0
+						End if
+					
+						MoveFolder oEnvironment.Item("OSDStateStorePath"), sArchiveDir & "\StateStore"
+					End if
+				End if
+
+
+				' Remove the whole folder
+
+				oLogging.CreateEntry "Removing " & oUtility.LocalRootPath & " folder (final log entry)", LogTypeInfo
+				RemoveFolder oUtility.LocalRootPath
+			
+			Else
+			
+				oLogging.CreateEntry "WARNING - Archive Directory " & sArchiveDir & " does not exist. Unable to perform full cleanup", LogTypeInfo
+			
+			End if
+
+		Else
+			oLogging.CreateEntry "WARNING - directory " & oUtility.LocalRootPath & " does not exist.", LogTypeInfo
+		End if
+
+
+		' Still files on X: that will interfere?  If so, clean them up too.
+
+		If oFSO.FileExists("X:\MININT\SMSOSD\OSDLOGS\VARIABLES.DAT") then
+			DeleteFile "X:\MININT\SMSOSD\OSDLOGS\VARIABLES.DAT"
+		End if
+
+
+		'//----------------------------------------------------------------------------
+		'//  Remove misc. folders
+		'//----------------------------------------------------------------------------
+
+		If not bOEM then
+			If oFSO.FolderExists(sSystemDrive & "\Deploy") then
+				RemoveFolder sSystemDrive & "\Deploy"
+			End if
+		End if
+
+		If oFSO.FolderExists(sSystemDrive & "\SMSTSLog") then
+			RemoveFolder sSystemDrive & "\SMSTSLog"
+		End if
+
+		For each sProc in array("x86","x64")
+
+			If oFSO.FileExists(oEnv("TEMP") & "\Tools\" & sProc & "\Microsoft.BDD.Utility.dll") then
+				sBDDUtility = oEnv("TEMP") & "\Tools\" & sProc & "\Microsoft.BDD.Utility.dll"
+			End if
+
+
+			' Unregister the DLL
+
+			oShell.Run "regsvr32.exe /u /s """ & sBDDUtility & """", 0, true ' Always returns 0 - Success
+
+		Next
+
+
+		EnableSystemRestore sMaxSize
+
+
+		Main = Success
+		
+	End function
+	
+	
+	'//----------------------------------------------------------------------------
+	'//  Local methods
+	'//----------------------------------------------------------------------------
+
+
+	Function RemoveFolder(sPath)
+		RemoveFolder = oFileHandling.RemoveFolderEx(sPath, oLogging.Debug)
+	End Function
+	
+	Function DeleteFile(sFile)
+		DeleteFile = oFileHandling.DeleteFileEx(sFile,oLogging.Debug)
+	End function
+	
+	Function MoveFile(sFile,sDest)
+		MoveFile = oFileHandling.MoveFileEx(sFile,sDest,oLogging.Debug)
+	End function
+	
+	Function CopyFile(sFile,sDest, bOverwrite)
+		CopyFile = oFileHandling.CopyFileEx(sFile,sDest, bOverwrite,oLogging.Debug)
+	End function
+	
+	Function CopyFolder (sSource, sDest, bOverwrite)
+		CopyFolder = oFileHandling.CopyFolderEx(sSource, sDest, bOverwrite,oLogging.Debug)
+	End function
+	
+	Function MoveFolder (sSource, sDest ) 
+		MoveFolder =  oFileHandling.MoveFolderEx(sSource, sDest,oLogging.Debug )
+	End function 
+	
+
+	Function EnableSystemRestore (sVSSMaxSize)
+	
+		Dim iRetVal, oSRP
+
+		' Enable system restore
+		On Error Resume Next
+		Set oSRP = GetObject("winmgmts:\\.\root\default:SystemRestore")
+		iRetVal = oSRP.Enable(oEnv("Systemdrive") & "\")
+
+		' Configure Shadow storage size
+		oShell.Run "cmd.exe /c vssadmin resize shadowstorage /For=" & oEnv("Systemdrive") & " /On=" & oEnv("Systemdrive") & " /MaxSize=" & sVSSMaxSize, 0, False
+		On Error Goto 0
+		EnableSystemRestore = iRetVal	
+		
+	End Function
+	
+
+	Function BCDObjectExistsNoOutput ( sGUID )
+		BCDObjectExistsNoOutput = false
+		on error resume next
+		oShell.Run "cmd.exe /c bcdedit.exe /enum " & sGUID & " > %temp%\bcdtest.txt", 0, True
+		oShell.Run "cmd.exe /c bcdedit.exe /enum " & sGUID & " /V >> %temp%\bcdtest.txt", 0, True
+		BCDObjectExistsNoOutput = instr(1,oFSO.OpenTextFile(oShell.ExpandEnvironmentStrings("%temp%\bcdtest.txt")).ReadAll,sGUID,vbTExtCompare) <> 0
+		on error goto 0
+	End function 
+
+
+	Function ProcessLog(sLog)
+
+		Dim oLog
+		Dim sLine
+		Dim sMessage
+		Dim sDetails
+		Dim sType
+		Dim sFile
+		Dim sComponent
+		Dim bProcess
+
+
+		' Make sure the file exists
+
+		If not oFSO.FileExists(sLog) then
+			Exit Function
+		End if
+
+
+		' Process the file
+
+		Set oLog = oFSO.OpenTextFile(sLog)
+		While not oLog.AtEndOfStream
+
+			' Split apart the message
+			bProcess = false
+			sLine = oLog.ReadLine
+			If Instr(sLine, "<![LOG[") > 0 then  ' Line beginning found
+
+				If Instr(sLine, "]LOG]!>") = 0 then  ' No end label found, start of multiline message
+					sMessage = Mid(sLine, 8)
+				Else
+					sMessage = Mid(sLine, 8, Instr(sLine, "]LOG]!>") - 8)
+					sDetails = Mid(sLine, Instr(sLine, "]LOG]!>") + 7)
+					sType = Mid(sDetails, Instr(sDetails, "type=""") + 6, 1)
+					bProcess = true
+				End if
+
+			Else  ' No line beginning found, continuation
+
+				If Instr(sLine, "]LOG]!>") = 0 then  ' No end label found, start of multiline message
+					sMessage = sMessage & vbNewLine & sLine
+				Else
+					sMessage = sMessage & vbNewLine & Left(sLine, Instr(sLine, "]LOG]!>") - 1)
+					sDetails = Mid(sLine, Instr(sLine, "]LOG]!>") + 7)
+					sType = Mid(sDetails, Instr(sDetails, "type=""") + 6, 1)
+					sFile = Mid(sDetails, Instr(sDetails, "file=""") + 6)
+					sFile = Left(sFile, Instr(sFile, """") - 1)
+					sComponent = Mid(sDetails, Instr(sDetails, "component=""") + 11)
+					sComponent = Left(sComponent, Instr(sComponent, """") - 1)
+					bProcess = true
+				End if
+
+			End if
+
+
+			' Inspect the type
+
+			If bProcess then
+
+				' Add the message to the details display
+
+				If sType > "1" then
+
+					If Instr(1, sMessage, "_SMSTaskSequence", 1) > 0 or Instr(1, sFile, "executionenv.cxx", 1) > 0 or Instr(1, sFile, "environmentlib.cpp", 1) > 0 then
+						' Ignore these messages
+					Else
+						' Increment the counter
+
+						Select Case sType
+						Case "3"
+							iErrors = iErrors + 1
+						Case "2"
+							iWarnings = iWarnings + 1
+						End Select
+
+
+						' Add a header when appropriate
+
+						If bFirst and Instr(1, sLog, "smsts", 1) > 0 then
+							oStrings.AddToList sBuffer, vbNewLine & "Messages from the task sequence engine:" & vbNewLine, vbNewLine
+							bFirst = False
+						End if
+
+
+						' Add the string to the list
+
+						oStrings.AddToList sBuffer, sMessage, vbNewLine
+
+					End if
+				End if
+
+			End if
+
+		WEnd
+
+		oLog.Close
+		Set oLog = Nothing
+
+	End Function
+
+End class
+
+	</script>
+</job>

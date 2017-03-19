@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!--
+
+' // ***************************************************************************
+' // 
+' // Copyright (c) Microsoft Corporation.  All rights reserved.
+' // 
+' // Microsoft Deployment Toolkit Solution Accelerator
+' //
+' // File:      Summary_Definition_ENU.xml
+' // 
+' // Version:   6.3.8443.1000
+' // 
+' // Purpose:   Display summary results for a Lite Touch deployment
+' // 
+' // ***************************************************************************
+
+-->
+<Wizard>
+	<Global>
+		<CustomStatement><![CDATA[ document.title =  "Deployment Summary" ]]> </CustomStatement>
+		<CustomStatement><![CDATA[ window.resizeTo 700,500 ]]> </CustomStatement>
+		<CustomStatement><![CDATA[ window.moveTo Window.screen.width/2 - 700/2, Window.screen.height/2 - 500/2 ]]> </CustomStatement>
+		<Initialization>Summary_Scripts.vbs</Initialization>
+		<HideNavigation>true</HideNavigation>
+	</Global>
+
+	<Pane id="Success">
+		<Condition><![CDATA[ UCase(Property("SkipFinalSummary")) <> "YES" and Property("RetVal") = "0" or Property("RetVal") = "" ]]></Condition>
+		<ButtonNext>
+			<Label><![CDATA[<button accesskey=F id=buttonNext language=vbscript onclick=ButtonNextClick><U>F</U>inish</button>]]></Label>
+		</ButtonNext>
+		<ButtonPrev>
+			<Label><![CDATA[<button accesskey=B id=buttonPrev style='display: none;' onclick="ButtonBackClick"><U>B</U>ack</button>]]></Label>
+		</ButtonPrev>
+		<Body>
+		<![CDATA[
+			<H1 id=NormalTitle>Operating system deployment completed successfully.</H1>
+			<H1 id=ReplaceTitle style="display: none;">The user state capture was completed successfully.</H1>
+        		<p>The computer is now ready to use.</p>
+			<p>During the deployment process, <span id=ErrorCount>0</span> errors and <span id=WarningCount>0</span> warnings were reported.</p>
+			<p>Deployment has been running for approximately <span id=DeploymentDuration>0</span> minutes.</p>
+
+			<p>
+                <input id=MoreInfo src=plusicon.gif type=image onclick="javascript:HideUnHideCmdWindow(optionalWindow1);" />
+				<label onclick="javascript:MoreInfo.click();" >Details ...</label>
+				<span id=optionalWindow1 style="" class=LightColoredBox></span>
+			</p>
+		]]>
+		</Body>
+		<Initialization><![CDATA[ InitializeSummary ]]></Initialization>
+	</Pane>
+
+	<Pane id="Failure">
+		<Condition><![CDATA[ Property("RetVal") <> "0" and Property("RetVal") <> ""]]></Condition>
+		<ButtonNext>
+			<Label><![CDATA[<button accesskey=F id=buttonNext language=vbscript onclick=ButtonNextClick><U>F</U>inish</button>]]></Label>
+		</ButtonNext>
+		<ButtonPrev>
+			<Label><![CDATA[<button accesskey=B id=buttonPrev style='display: none;' onclick="ButtonBackClick"><U>B</U>ack</button>]]></Label>
+		</ButtonPrev>
+		<Body>
+		<![CDATA[
+			<H1 id=NormalTitle>Operating system deployment did not complete successfully.</H1>
+			<H1 id=ReplaceTitle style="display: none;">The user state capture did not complete successfully.</H1>
+				<p>Please review the log files to determine the cause of the problem.</p>
+			<p>During the deployment process, <span id=ErrorCount>0</span> errors and <span id=WarningCount>0</span> warnings were reported.</p>
+
+			<p>
+                <input id=MoreInfo src=plusicon.gif type=image onclick="javascript:HideUnHideCmdWindow(optionalWindow1);" />
+				<label onclick="javascript:MoreInfo.click();" >Details ...</label>
+				<span id=optionalWindow1 style="display=none;" class=LightColoredBox></span>
+			</p>
+		]]>
+		</Body>
+		<Initialization><![CDATA[ InitializeSummary ]]></Initialization>
+	</Pane>
+
+</Wizard>
