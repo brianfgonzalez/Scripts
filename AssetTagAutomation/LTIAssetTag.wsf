@@ -1,0 +1,47 @@
+<job id="LTIAssetTag">
+  <script language="VBScript" src="ZTIUtility.vbs"/>
+  <script language="VBScript">
+' // ***************************************************************************
+' // 
+' // Copyright (c) Microsoft Corporation.  All rights reserved.
+' // 
+' // Microsoft Deployment Toolkit Solution Accelerator
+' //
+' // File:      LTIAssetTag.wsf
+' // 
+' // Version:   6.3.8443.1000
+' // 
+' // Purpose:
+' // 
+' // Usage:     cscript.exe LTIAssetTag.wsf [/debug:true]
+' // 
+' // ***************************************************************************
+Option Explicit
+RunNewInstance
+'//----------------------------------------------------------------------------
+'//  Main Class
+'//----------------------------------------------------------------------------
+Class LTIAssetTag
+  '//----------------------------------------------------------------------------
+  '//  Main routine
+  '//----------------------------------------------------------------------------
+  Function Main
+    '//----------------------------------------------------------------------------
+    '//  Declare variables
+    '//----------------------------------------------------------------------------
+    Dim iRetVal,oNewAssetTag
+    iRetVal = Success
+    '//----------------------------------------------------------------------------
+    '//  Install Adobe Reader client and update
+    '//----------------------------------------------------------------------------  
+    If oEnvironment.Item("AssetTag")<>oEnvironment.Item("OsdComputerName") Then
+      oLogging.CreateEntry "AssetTag requires updating. Beginning update to """ & oEnvironment.Item("OsdComputerName"), LogTypeInfo
+	  Set oNewAssetTag = oFSO.OpenTextFile(oEnv("Temp") & "\NewAssetTag.txt", ForAppending, True)
+	  oNewAssetTag.Write oEnvironment.Item("OsdComputerName")
+	  oNewAssetTag.Close
+      oUtility.RunWithHeartbeat oUtility.ScriptDir & "\AssetTag.exe /Y /F:""" & oEnv("Temp") & "\NewAssetTag.txt"""
+	End If
+  End Function
+End Class
+    </script>
+</job>

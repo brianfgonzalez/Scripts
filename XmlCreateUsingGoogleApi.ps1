@@ -153,6 +153,9 @@ $oCabFiles | Sort-Object id -Unique | ? { $_.name -imatch "\d{1,2}(x64|x86)_.*\.
     $oCabOs = $oCabRoot.AppendChild($oXml.CreateElement('date'))
     $oCabOs.InnerXml = (('{0}' -f $_.createdTime) -split "T")[0]
 }
+$sorted = $oXml.cabs.cab | sort name -desc
+$lastChild = $sorted[-1]
+$sorted[0..($sorted.Length-2)] | Foreach {$oXml.cabs.InsertBefore($_,$lastChild)}
 $oXml.save($sCabsXmlPath)
 
 #-------------------OCBS----------------------------
@@ -204,6 +207,9 @@ $aOcbFiles = $aOcbFiles | Sort-Object id -Unique | ? { $_.name -imatch ".*MK\d-\
     $oOcbOs = $oOcbRoot.AppendChild($oXml.CreateElement('date'))
     $oOcbOs.InnerXml = (('{0}' -f $_.createdTime) -split "T")[0]
 }
+$sorted = $oXml.ocbs.ocb | sort name -desc
+$lastChild = $sorted[-1]
+$sorted[0..($sorted.Length-2)] | Foreach {$oXml.ocbs.InsertBefore($_,$lastChild)}
 $oXml.save($sOcbsXmlPath)
 
 #Build csv file displaying what files are missing on our Ftp
