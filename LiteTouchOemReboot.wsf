@@ -1,0 +1,1728 @@
+<job id="LiteTouch">
+   <script language="VBScript" src="ZTIUtility.vbs"/>
+   <script language="VBScript" src="ZTIDataAccess.vbs"/>
+   <script language="VBScript" src="ZTIDiskUtility.vbs"/>
+   <script language="VBScript">
+
+' // ***************************************************************************
+' // 
+' // Copyright (c) Microsoft Corporation.  All rights reserved.
+' // 
+' // Microsoft Deployment Toolkit Solution Accelerator
+' //
+' // File:      Litetouch.wsf
+' // 
+' // Version:   6.3.8443.1000
+' // 
+' // Purpose:   Drive the lite touch deployment process
+' // 
+' // Usage:     cscript LiteTouch.wsf [/debug:true]
+' // 
+' // ***************************************************************************
+
+Option Explicit
+Dim oLiteTouch
+Dim iScriptRC
+Dim bUpgradeSuccess
+
+If not oUtility.Arguments.Exists("DebugCapture") Then
+	On Error Resume Next
+End If
+
+Set oLiteTouch = new Litetouch
+TestAndFail SUCCESS, 5400, "Create object: Set oLiteTouch = New Litetouch"
+
+iScriptRc =  oLiteTouch.Main
+
+Wscript.quit iScriptRc
+
+
+'//----------------------------------------------------------------------------
+'//  Global Constants
+'//----------------------------------------------------------------------------
+
+
+'//----------------------------------------------------------------------------
+'//  Main Class
+'//----------------------------------------------------------------------------
+
+
+Class Litetouch
+
+
+	'//----------------------------------------------------------------------------
+	'//  Class instance variable declarations
+	'//----------------------------------------------------------------------------
+
+
+	'//----------------------------------------------------------------------------
+	'//  Constructor to initialize needed global objects
+	'//----------------------------------------------------------------------------
+
+	Private Sub Class_Initialize
+
+	End Sub
+
+
+	'//----------------------------------------------------------------------------
+	'//  Main routine
+	'//----------------------------------------------------------------------------
+
+	Function Main
+		Dim oProgressWiz
+		Dim iRetVal
+		Dim oLink
+		Dim sCmd
+		Dim sBootstrap, sTSPath, sFile
+		Dim i
+		Dim oDrive
+		Dim oShellApp
+		Dim bTSInProgress
+		Dim sSource
+		Dim bIsAdmin
+		Dim oAssocs
+		Dim oAssoc
+		Dim bFoundMedia
+		Dim sPlat
+		Dim sProcessorArchitecture
+		Dim bIsOEM
+		Dim oTS
+		Dim sOriginalDeployRoot
+		Dim sOSVer
+		Dim oInstances
+		Dim oInstance
+		Dim sFinishAction
+		Dim bSkipFinalSummary
+		Dim bIsServerCoreOS
+		Dim sWizard
+		Dim sDisableDiskMgr
+		Dim iCurrentOSVerMajor
+		Dim sUpgradeFailureCode
+
+		iRetVal = Success
+
+		' Check for administrative rights if we are using Xp or Windows 2003.
+		' If not then throw error and exit script.
+		
+		' Check OS version
+		Set oInstances = objWMI.ExecQuery("select * from Win32_OperatingSystem")
+		For Each oInstance In oInstances
+			sOSVer = oInstance.Version
+		Next
+ 
+		On Error Resume Next
+		
+
+		' Check if we can write to the windows folder
+
+		oFSO.CreateTextFile(oEnv("SystemRoot") & "\authtest.txt")
+		oUtility.GetMajorMinorVersion(sOSVer)
+		iCurrentOSVerMajor = oUtility.VersionMajor
+		If (iCurrentOSVerMajor < 6) and Err <> 0 and (ucase(oEnv("SystemDrive")) <> "X:") then			
+				oShell.Popup "You do not have the correct permissions to perform this deployment. Please run as a local administrator.", 0, "Permissions Error", 16
+				WScript.Quit iRetVal
+		End if
+		
+		Err.clear
+		On Error Goto 0
+		
+		
+		' Temporary adding support for legacy Javascript until fix is included in WinPE
+
+		If ucase(oEnv("SystemDrive")) = "X:" then
+			oUtility.RegWrite "HKLM\SOFTWARE\Microsoft\Internet Explorer\Main\FeatureControl\FEATURE_USE_LEGACY_JSCRIPT\mshta.exe", 1
+		End if
+
+		
+		' Are we dirty?
+
+		If oEnvironment.Item("LTIDirty") = "TRUE" or (oEnvironment.Item("LTIDirtyOS") = "TRUE" and (not oUtility.Arguments.Exists("start"))) then
+
+			i = oShell.Popup("An existing in-progress deployment was found but is not in an expected state.  Would you like to ignore this in-progress deployment and start a new one?", 0, "Dirty Environment Found", 4+48)
+			If i = 6 then
+				QuickCleanup
+				oLogging.CreateEntry "Cleaned up a dirty deployment.", LogTypeInfo
+			Else
+				oLogging.CreateEntry "User chose to continue a dirty deployment.", LogTypeInfo
+			End if
+
+		End if
+
+
+		' If in PE, make sure the C: drive is a fixed disk.  Otherwise, on a computer
+		' with no existing partitions on the first disk, the CD or USB drive can become C:.
+		' That causes issues when we later want to create a C: partition.
+
+		If oEnv("SystemDrive") = "X:" and oFSO.DriveExists("C:") then
+
+			' If the C: drive is removable, move it
+
+			If oFSO.GetDrive("C:").DriveType <> 2 then
+
+				MoveCDrive
+				
+			End if
+
+		End if
+
+
+		' See if there is an in-progress task sequence
+
+		bTSInProgress = False
+		For each oDrive in oUtility.GetAllFixedDrives(false)
+
+				If oFSO.FileExists(oDrive & "\_SMSTaskSequence\TSEnv.dat") then
+				
+					oLogging.CreateEntry "Found existing task sequence state information in " & oDrive & "\_SMSTaskSequence, will continue", LogTypeInfo
+					bTSInProgress = True
+					Exit For
+					
+				End if
+
+		Next
+		
+		If not bTSInProgress then
+		
+			oLogging.CreateEntry "No task sequence is in progress.", LogTypeInfo
+			
+		End if
+
+
+		If oUtility.Arguments.Exists("CleanStart") then
+
+			oLogging.CreateEntry "This script was started from litetouch.vbs with the /CleanStart switch. Clean existing instances of MDT.", LogTypeInfo
+			QuickCleanup
+			bTSInProgress = False
+
+		End if
+
+
+		' Make sure there's no unattend.xml to get in the way if we're just getting started
+
+		If not bTSInProgress then
+
+			If oFSO.FileExists(oEnv("SystemDrive") & "\Windows\Panther\unattend\unattend.xml") then
+			
+				oLogging.CreateEntry "Removing old " & oEnv("SystemDrive") & "\Windows\Panther\unattend\unattend.xml", LogTypeInfo
+				oFSO.DeleteFile oEnv("SystemDrive") & "\Windows\Panther\unattend\unattend.xml", true
+				TestAndLog SUCCESS, "Removed " & oEnv("SystemDrive") & "\Windows\Panther\unattend\unattend.xml"
+				
+			End if
+
+		End if
+
+
+		' Clean up the LTIBootstrap.vbs file if it exists
+
+		If oFSO.FileExists(oEnv("SystemDrive") & "\LTIBootstrap.vbs") then
+			On Error Resume Next
+			oFSO.DeleteFile oEnv("SystemDrive") & "\LTIBootstrap.vbs", true
+			On Error Goto 0
+		End if
+
+
+		'Set the Task Sequence files to the first possible system drive (if available)
+
+		If oEnvironment.Item("PHASE") = "" Then
+			oEnvironment.Item("SMSTSLocalDataDrive") = GetFirstPossibleSystemDrive
+			oUtility.VerifyPathExists oEnvironment.Item("SMSTSLocalDataDrive") & "\MININT\SMSOSD\OSDLOGS"
+			oUtility.ResetLocalRootPath
+		End If
+
+
+		'//----------------------------------------------------------------------------
+		'//  If starting in the new OS, create a shortcut to run once the shell starts
+		'//----------------------------------------------------------------------------
+
+		If oUtility.Arguments.Exists("start") then
+		
+			If (oEnvironment.Item("IsOSUpgrade") <> "" and oEnvironment.Item("IsOSUpgrade") = "1") then
+				oLogging.CreateEntry "Running OS Upgrade", LogTypeInfo				
+			Else			
+				' Remove the LTIDirtyOS flag as we're getting into the new OS exactly how we expected
+			
+				oEnvironment.Item("LTIDirtyOS") = "FALSE"
+			
+				' Create the startup group item if needed
+
+				SetStartMDT
+				If oFSO.FileExists(oEnv("SystemRoot") & "\Explorer.exe") and UCase(oEnvironment.Item("HideShell")) <> "YES" then						
+					Main = Success
+					Exit Function
+				End If
+			End If
+			
+		End if
+
+
+		'//----------------------------------------------------------------------------
+		'//  Test for the existance of a recovery session, and if present, call WinRE.
+		'//----------------------------------------------------------------------------			
+		TestForWinREAndLaunch
+
+
+		'//----------------------------------------------------------------------------
+		'//  Set the deployment method
+		'//----------------------------------------------------------------------------			
+		bFoundMedia = False
+		For Each oDrive in oFSO.Drives
+
+			If oDrive.IsReady then
+			
+				If oFSO.FileExists(oDrive.DriveLetter & ":\Deploy\Scripts\Media.tag") then
+				
+					bFoundMedia = True
+					oEnvironment.Item("DeployRoot") = oDrive.DriveLetter & ":\Deploy"
+					oEnvironment.Item("ResourceRoot") = oDrive.DriveLetter & ":\Deploy"
+					oEnvironment.Item("DeploymentMethod") = "MEDIA"
+					Exit For
+					
+				End if
+				
+			End if
+
+		Next
+
+
+		' If we already know we're doing a media deployment and we can't find the media,
+		' prompt to have it reinserted
+
+		If oEnvironment.Item("DeploymentMethod") = "MEDIA" and not bFoundMedia then
+
+			bFoundMedia = False
+			Do While not bFoundMedia
+
+				oLogging.CreateEntry "Unable to find media, prompting to have it reinserted", LogTypeInfo
+				oShell.Popup "Please reinsert the media (CD, DVD, or USB) needed to complete the deployment.", 0, "Media not found", 48
+
+				For Each oDrive in oFSO.Drives
+
+					If oDrive.IsReady then
+					
+						If oFSO.FileExists(oDrive.DriveLetter & ":\Deploy\Scripts\Media.tag") then
+						
+							bFoundMedia = True
+							oEnvironment.Item("DeployRoot") = oDrive.DriveLetter & ":\Deploy"
+							oEnvironment.Item("ResourceRoot") = oDrive.DriveLetter & ":\Deploy"
+							oEnvironment.Item("DeploymentMethod") = "MEDIA"
+							
+							Exit For
+						End if
+					End if
+
+				Next
+
+			Loop
+
+		End if
+
+
+		' If no media found and we don't know the deployment method, it must be UNC.
+
+		If oEnvironment.Item("DeploymentMethod") = "" then
+		
+			oEnvironment.Item("DeploymentMethod") = "UNC"
+			
+		End if
+
+		oLogging.CreateEntry "DeploymentMethod = " & oEnvironment.Item("DeploymentMethod"), LogTypeInfo
+
+		'//----------------------------------------------------------------------------
+		'//  If there were any "saved" network settings, restore them now.
+		'//----------------------------------------------------------------------------
+
+		If isNumeric(oEnvironment.Item("OSDAdapterCount")) then
+			If Cint(oEnvironment.Item("OSDAdapterCount")) > 0 then                                
+				sCmd = "wscript.exe """ & oUtility.ScriptDir & "\ZTINicConfig.wsf"" /RestoreWithinWinPE"
+				iRetVal = RunAndLog(sCmd, true)
+				TestAndLog iRetVal,"Excution: " & sCmd
+			End if
+		End if
+
+
+		'//----------------------------------------------------------------------------
+		'//  Find the "real" DeployRoot
+		'//----------------------------------------------------------------------------
+
+		If oEnvironment.Item("DeploymentMethod") = "UNC" then
+
+			' Set the DeployRoot based on where we were started from
+
+			If oEnvironment.Item("DeployRoot") = "" then
+			
+				oEnvironment.Item("DeployRoot") = oFSO.GetParentFolderName(oUtility.ScriptDir)
+				
+			End if
+
+			ValidateDeployRootWithRecovery
+
+		End if
+		
+		oLogging.CreateEntry "DeployRoot = " & oEnvironment.Item("DeployRoot"), LogTypeInfo
+
+
+		oEnvironment.Item("DeployDrive") = oUtility.FindMappedDrive(oEnvironment.Item("DeployRoot"))
+		oLogging.CreateEntry "DeployDrive = " & oEnvironment.Item("DeployDrive"), LogTypeInfo
+
+
+		'//----------------------------------------------------------------------------
+		'//  Gather information
+		'//----------------------------------------------------------------------------
+
+
+		' Set the phase if it isn't already set
+
+		If oEnvironment.Item("PHASE") = "" or (oEnvironment.Item("IsOSUpgrade") <> "" and oEnvironment.Item("IsOSUpgrade") = "1") then
+
+			If oEnv("SystemDrive") = "X:" then  ' Running in PE
+			
+				oEnvironment.Item("PHASE") = "PREINSTALL"				
+				If oEnvironment.Item("DeploymentType") = "" then
+					oEnvironment.Item("DeploymentType") = "NEWCOMPUTER"
+				End if
+				
+			Else
+			
+				oEnvironment.Item("PHASE") = "VALIDATION"
+				If oEnvironment.Item("IsOSUpgrade") = "1" then
+					oEnvironment.Item("DeploymentType") = "UPGRADE"					
+					oEnvironment.Item("PHASE") = ""
+					oLogging.CreateEntry "This is Upgrade, setting Phase =  (empty)" & oEnvironment.Item("Phase"), LogTypeInfo
+				ElseIf oEnvironment.Item("DeploymentType") = "" then				
+					oEnvironment.Item("DeploymentType") = "REFRESH"
+				End if
+
+			End if
+
+		End if
+
+		oLogging.CreateEntry "Phase = " & oEnvironment.Item("Phase"), LogTypeInfo
+
+
+		' Do the full gathering process and display the wizard the first time, otherwise
+		' just refresh the environment
+
+		If (oEnvironment.Item("PHASE") = "VALIDATION") or (oEnvironment.Item("PHASE") = "PREINSTALL" and oEnvironment.Item("DeploymentType") = "NEWCOMPUTER") then
+
+			' Try to create the welcome wizard to display progress
+
+			oLogging.ReportProgress "Initializing.", 1
+
+			On Error Resume Next
+			Set oProgressWiz = Nothing
+			sCmd = "MSHTA.exe """ & oUtility.ScriptDir & "\Wizard.hta"" /definition:BDD_Welcome_ENU.xml"
+			Set oProgressWiz = oShell.Exec(sCmd)
+			On Error Goto 0
+
+
+			' Process bootstrap rules
+
+			sCmd = "wscript.exe """ & oUtility.ScriptDir & "\ZTIGather.wsf"" /inifile:Bootstrap.ini"
+			iRetVal = RunAndLog(sCmd, true)
+			TestAndLog iRetVal,"Running " & sCMD
+			sOriginalDeployRoot = oEnvironment.Item("DeployRoot")
+
+
+			' As long as the wizard was displayed, wait for it to finish
+
+			If not (oProgressWiz is Nothing) then
+
+				' Wait for the wizard to exit or to indicate a choice
+
+				Do While oProgressWiz.Status = 0
+					WScript.Sleep 200
+				Loop
+
+
+				' Was the wizard cancelled?  If so, exit
+
+				If UCase(oEnvironment.Item("SkipBDDWelcome")) <> "YES" and oEnvironment.Item("WizardComplete") <> "Y" then
+					Cleanup
+					oLogging.ReportFailure "Welcome wizard failed or was cancelled", 5212
+				End if
+
+			End if
+
+
+			' If there were any "saved" network settings. Restore them now.
+
+			If isNumeric(oEnvironment.Item("OSDAdapterCount")) then
+			
+				If Cint(oEnvironment.Item("OSDAdapterCount")) > 0 then
+				
+					sCmd = "wscript.exe """ & oUtility.ScriptDir & "\ZTINicConfig.wsf"" /RestoreWithinWinPE"
+					iRetVal = RunAndLog(sCmd, true)
+					TestAndLog iRetVal,"Excution: " & sCmd
+					
+				End if
+				
+			End if
+
+
+			' Enable DaRT remote control (for Windows PE)
+
+			EnableDaRT
+
+			' Set the keyboard if necessary
+
+			If oEnv("SystemDrive") = "X:" and oEnvironment.Item("KeyboardLocalePE") <> "" then
+
+				sCmd = right("0000" & Hex(GetLocale),4) & ":" & right("00000000" & Hex(GetLocale), 8)
+				If UCase(oEnvironment.Item("KeyboardLocalePE")) <> UCase( sCmd ) then
+					
+					sCmd = "wpeutil.exe SetKeyboardLayout " & oEnvironment.Item("KeyboardLocalePE")
+					RunAndLog sCmd, false
+						
+				End if
+
+			End if
+
+
+			' Validate connection (if DeployRoot has changed)
+
+			ValidateDeployRootWithRecovery
+
+
+			' Validate we are running as an administrator
+
+			On error resume next
+			bIsAdmin = oUtility.BDDUtility.IsAdmin
+			On error goto 0
+
+			If oEnv("SystemDrive") = "X:" then  ' Running in PE
+			
+				' OK if running within WinPE
+				
+			ElseIf isempty(bIsAdmin) then
+			
+				' BDDUtility not found, default to OK
+				
+			ElseIf bIsAdmin = FALSE then
+
+				oShell.Popup "You must be running with Administrator rights.  The deployment cannot proceed.", 0, "Wizard Error", 16
+				oLogging.ReportFailure "The logged-on user does not have Administrator rights.", 5204
+
+			End if
+
+
+			' Try to create the welcome wizard to display progress of CustomSettings.ini
+
+			oLogging.ReportProgress "Initializing.", 1
+
+			On Error Resume Next
+			Set oProgressWiz = Nothing
+			sCmd = "MSHTA.exe """ & oUtility.ScriptDir & "\Wizard.hta"" /definition:WelcomeWiz_Initialize.xml"
+			Set oProgressWiz = oShell.Exec(sCmd)
+			On Error Goto 0
+
+
+			' Process full rules.  If DeployRoot is blank or still pointing to PE, this is optional.
+
+			oLogging.ReportProgress "Processing full rules.", 50
+			If Left(UCase(oEnvironment.Item("DeployRoot")), 3) = "X:\" or oEnvironment.Item("DeployRoot") = "" then
+				sCmd = "wscript.exe """ & oUtility.ScriptDir & "\ZTIGather.wsf"" /nolocalonly /optional"
+			Else
+				sCmd = "wscript.exe """ & oUtility.ScriptDir & "\ZTIGather.wsf"" /nolocalonly"
+			End if
+			iRetVal = RunAndLog(sCmd, true)
+			TestAndLog iRetVal, "Running " & sCMD
+
+
+			' Validate connection (if DeployRoot has changed)
+
+			ValidateDeployRootWithRecovery
+
+
+			' If a task sequence ID was set, populate the other properties
+
+			If oEnvironment.Item("TaskSequenceID") <> "" then
+			
+				oUtility.SetTaskSequenceProperties Ucase(oEnvironment.Item("TaskSequenceID"))
+				
+			End if
+
+
+			oLogging.ReportProgress "Initialization complete.", 100
+
+
+			' As long as the wizard was displayed, wait for it to finish
+
+			If not (oProgressWiz is Nothing) then
+
+				' Wait for the progress wizard to exit (should already be shutting down)
+
+				Do While oProgressWiz.Status = 0
+					WScript.Sleep 200
+				Loop
+
+			End if
+
+
+			' If DeployRoot changed, validate the connection again and re-process rules
+
+			If sOriginalDeployRoot <> oEnvironment.Item("DeployRoot") then
+
+				' Validate connection
+
+				ValidateDeployRootWithRecovery
+
+
+				' Process full rules again
+
+				sCmd = "wscript.exe """ & oUtility.ScriptDir & "\ZTIGather.wsf"" /nolocalonly"
+				iRetVal = RunAndLog(sCmd, true)
+				TestAndLog iRetVal, "Running " & sCMD
+
+			End if
+
+
+
+			' Display the deployment wizard (unless skipped)
+			oEnvironment.Item("LTIDirty") = "TRUE"
+		
+			If UCase(oEnvironment.Item("SkipWizard")) <> "YES" then
+
+				sCmd = "MSHTA.exe """ & oEnvironment.Item("DeployRoot") & "\Scripts\Wizard.hta"" /definition:DeployWiz_Definition_ENU.xml"
+				iRetVal = RunAndLog(sCmd, true)
+				TestAndLog iRetVal, "Running " & sCMD
+
+				' Make sure the wizard completed
+
+				If oEnvironment.Item("WizardComplete") <> "Y" then
+					oShell.Popup "The Deployment Wizard was cancelled or did not complete successfully.  The deployment will not proceed.", 0, "Wizard Error", 16
+					Cleanup
+					oLogging.ReportFailure "The Deployment Wizard was cancelled or did not complete successfully.  The deployment will not proceed.", 5206
+					
+				End if
+
+
+			End if
+
+
+			' Validate the DeploymentType value
+
+			Select Case UCase(oEnvironment.Item("DeploymentType"))
+			Case "NEWCOMPUTER", "REFRESH", "REPLACE", "CUSTOM", "STATERESTORE", "UPGRADE"
+
+				oLogging.CreateEntry "Validated DeploymentType, value = " & oEnvironment.Item("DeploymentType"), LogTypeVerbose
+
+			Case Else
+
+				oShell.Popup "Invalid DeploymentType value """ & oEnvironment.Item("DeploymentType") & """ specified.  The deployment will not proceed.", 0, "Deployment Error", 16
+				oLogging.CreateEntry "Invalid DeploymentType value """ & oEnvironment.Item("DeploymentType") & """ specified.", LogTypeError
+				Cleanup
+				oLogging.ReportFailure "Invalid DeploymentType value """ & oEnvironment.Item("DeploymentType") & """ specified.", 5208
+				
+			End Select
+
+
+			' Clean up properties if the wizard was skipped
+
+			If UCase(oEnvironment.Item("SkipWizard")) = "YES" then
+
+				If oEnvironment.Item("JoinDomain") = "" and oEnvironment.Item("JoinWorkgroup") = "" then
+				
+					SetPropertyDefault "JoinWorkgroup", "WorkGroup", "Join basic workgroup"
+					
+				End if
+				
+				If UCase(oEnvironment.Item("DeploymentType")) =  "UPGRADE" and oEnvironment.Item("IsOSUpgrade") = "" then
+					SetPropertyDefault "IsOSUpgrade", "1", "Wizard is skipped and we are performing upgrade, setting IsOSUpgrade = 1"
+				End if
+
+				SetPropertyDefault "ComputerBackupLocation", "NONE", "Do not backup"
+				SetPropertyDefault "UserDataLocation", "NONE", "Empty Strings break automation"
+				SetPropertyDefault "TimeZoneName", "Pacific Standard Time", "Set TimeZone to some default"
+
+
+				If oEnvironment.Item("JoinDomain") <> "" Then
+				
+					SetPropertyDefault "DomainAdmin", oEnvironment.Item("UserID"), "Use the credentials supplied for DomainJoin"
+					SetPropertyDefault "DomainAdminDomain", oEnvironment.Item("UserDomain"), "Use the credentials supplied for DomainJoin"
+					SetPropertyDefault "DomainAdminPassword", oEnvironment.Item("UserPassword"), "Use the credentials supplied for DomainJoin"
+					
+				End if
+
+			End if
+
+
+			' For the management pack, set OSDComputerName in some cases
+
+			If Ucase(oEnvironment.Item("ComputerName")) <> "" AND Ucase(OEnvironment.Item("OSDComputerName")) = "" Then
+				
+				oEnvironment.Item("OSDComputerName") = oEnvironment.Item("ComputerName")
+			End If
+			
+			If oEnvironment.Item("OSDComputerName") = "" Then
+				If oUtility.ComputerName = "" Then
+		
+					If oEnvironment.Item("HostName") <> "" Then
+						oEnvironment.Item("OSDComputerName") = oEnvironment.Item("HostName")
+					Else
+						oEnvironment.Item("OSDComputerName") = oENV("ComputerName")
+					End If
+				End If
+			End If
+
+			'Set the USMT TagFile if storing to a local drive
+			If Mid(oEnvironment.Item("UserDataLocation"),2,1) = ":" Then
+
+				Dim USMTTagFile
+				On Error Resume Next
+				If not oFSO.FileExists(Left(oEnvironment.Item("UserDataLocation"), 2) & "\UserState.tag") Then
+					Set USMTTagFile = OFSO.CreateTextFile(Left(oEnvironment.Item("UserDataLocation"), 2) & "\UserState.tag", true)
+
+					If Err Then
+						oLogging.CreateEntry "Invalid UserDataLocation specified", LogTypeError
+						Main = Failure
+						Exit Function
+					End If
+					USMTTagFile.Close
+				End If
+			End If
+
+		Else
+
+			' Enable DaRT remote control (for Windows PE)
+
+			EnableDaRT
+
+		End if
+
+
+		ValidateDeployRootWithRecovery
+
+
+		oEnvironment.Item("DeployDrive") = oUtility.FindMappedDrive(oEnvironment.Item("DeployRoot"))
+		oLogging.CreateEntry "DeployDrive = " & oEnvironment.Item("DeployDrive"), LogTypeInfo
+
+
+		If oEnvironment.Item("ResourceRoot") = "" then
+		
+			oEnvironment.Item("ResourceRoot") = oEnvironment.Item("DeployRoot")
+			
+		Else
+		
+			oUtility.ValidateConnectionEx oEnvironment.Item("ResourceRoot"), True
+			
+		End if
+
+		oLogging.CreateEntry "DeploymentType = " & oEnvironment.Item("DeploymentType"), LogTypeInfo
+		oLogging.CreateEntry "ResourceRoot = " & oEnvironment.Item("ResourceRoot"), LogTypeInfo
+		oEnvironment.Item("ResourceDrive") = oUtility.FindMappedDrive(oEnvironment.Item("ResourceRoot"))
+		oLogging.CreateEntry "ResourceDrive = " & oEnvironment.Item("ResourceDrive"), LogTypeInfo
+
+
+		'//----------------------------------------------------------------------------
+		'//  Process the task sequence
+		'//----------------------------------------------------------------------------
+
+
+		' Set the task sequence name
+
+		If oEnvironment.Item("_SMSTSPackageName") = "" then
+			oEnvironment.Item("_SMSTSPackageName") = "Lite Touch Installation"
+		End if
+		oShell.Environment("PROCESS")("SEE_MASK_NOZONECHECKS") = 1
+
+
+		' Verify the Processor_Architecture and replace if necessary.
+		
+		sProcessorArchitecture = oEnv("Processor_Architecture")
+		If ucase(sProcessorArchitecture) = "AMD64" then
+		
+			sProcessorArchitecture = "x64"
+			
+		End if
+
+		If ucase(oEnvironment.Item("Architecture")) <> ucase(sProcessorArchitecture) then
+		
+			oEnvironment.Item("Architecture") = sProcessorArchitecture
+			
+		End if
+
+
+		' Set the script root path that should be used.  (These can't be task sequence variables because
+		' we have no way of injecting new values into the task sequence environment before the task sequence
+		' resumes.)
+
+		oEnv("ScriptRoot") = oEnvironment.Item("DeployRoot") & "\Scripts"
+		oEnv("ToolRoot") = oEnvironment.Item("DeployRoot") & "\Tools\" & oEnvironment.Item("Architecture")
+
+
+		' Copy the task sequencer files if they aren't already on the drive
+
+
+		If oFSO.FileExists("X:\Deploy\Tools\" & oEnvironment.Item("Architecture") & "\TsmBootstrap.exe") then
+
+			oLogging.CreateEntry "SMS Task Sequencer already found on X:\Deploy\Tools\" & oEnvironment.Item("Architecture"), LogTypeInfo
+			sTSPath = "X:\Deploy\Tools\" & oEnvironment.Item("Architecture")
+
+		ElseIf oFSO.FileExists(oUtility.LocalRootPath & "\Tools\" & oEnvironment.Item("Architecture") & "\TsmBootstrap.exe") then
+
+			oLogging.CreateEntry "SMS Task Sequencer already found on " & oUtility.LocalRootPath & "\Tools\" & oEnvironment.Item("Architecture"), LogTypeInfo
+			sTSPath = oUtility.LocalRootPath & "\Tools\" & oEnvironment.Item("Architecture")
+
+		Else
+
+			iRetVal = oUtility.FindFile("TsmBootstrap.exe", sBootstrap)
+			If (iRetVal <> Success) then
+				oShell.Popup "Unable to find the SMS Task Sequencer.  The deployment will not proceed.", 0, "Wizard Error", 16
+				oLogging.ReportFailure "Unable to find the SMS Task Sequencer.  The deployment will not proceed.", 5208
+			End if
+			
+			sSource = oFSO.GetParentFolderName(sBootstrap)
+			sTSPath = oUtility.LocalRootPath & "\Tools\" & oEnvironment.Item("Architecture")
+			oLogging.CreateEntry "SMS Task Sequencer found at " & sSource & ", copying to " & sTSPath, LogTypeInfo
+			
+			If Left(sTSPath, 2) <> "X:" then  ' Running from PE
+			
+				oUtility.VerifyPathExists sTSPath & "\00000409"
+				
+				For each sFile in Array("CcmCore.dll","CcmUtilLib.dll","Smsboot.exe","SmsCore.dll","TsCore.dll","TSEnv.exe","TsManager.exe","TsmBootstrap.exe","TsMessaging.dll","TsProgressUI.exe","TSResNlc.dll","msvcp120.dll","msvcr120.dll","CommonUtils.dll","ccmgencert.dll","00000409\tsres.dll")
+				
+					oLogging.CreateEntry "Copying " & sSource & "\" & sFile & " to " & sTSPath & "\" & sFile, LogTypeInfo
+					oFSO.CopyFile sSource & "\" & sFile, sTSPath & "\" & sFile, true
+					
+				Next
+				
+			End if
+
+		End if
+
+		If not oFSO.FileExists(sTSPath & "\TS.XML") then
+
+			' Copy the appropriate TS.XML file
+
+			oUtility.VerifyPathExists sTSPath
+			oLogging.CreateEntry "Copying " & oEnvironment.Item("DeployRoot") & "\Control\" & oEnvironment.Item("TaskSequenceID") & "\TS.XML to " & sTSPath, LogTypeInfo
+			oFSO.CopyFile oEnvironment.Item("DeployRoot") & "\Control\" & oEnvironment.Item("TaskSequenceID") & "\TS.XML", sTSPath & "\TS.XML", true
+
+
+			' Copy the VARIABLES.DAT to where the task sequence can find it
+
+			If oFSO.FileExists(oEnvironment.PersistPath & "\" & oEnvironment.PersistFile) then
+			
+				oLogging.CreateEntry "Copying " & oEnvironment.PersistPath & "\" & oEnvironment.PersistFile & " to " & sTSPath & "\VARIABLES.DAT", LogTypeInfo
+				oFSO.CopyFile oEnvironment.PersistPath & "\" & oEnvironment.PersistFile, sTSPath & "\VARIABLES.DAT", true
+				
+			End if
+
+
+		End if
+		
+
+		' Ensure that this machine does *not* go to sleep while running the task sequence steps.
+
+		On error resume next
+		oUtility.BDDUtility.KeepAlive
+		On error goto 0
+	
+		' Wait for the shell if necessary
+
+		If UCase(oEnvironment.Item("HideShell")) = "YES" then
+			On Error Resume Next
+			oUtility.BDDUtility.WaitForShell
+			On Error Goto 0
+		End if
+		
+		'Set the Max SMSTS.LOG size
+		
+			ExtendSMSTSLogSize				
+		
+	
+		' Run the task sequence
+
+		If bTSInProgress then
+
+			' Resume the task sequence
+			
+			oUtility.GetOSTargetDriveLetterEx False
+			sCmd = """" & sTSPath & "\TsmBootstrap.exe"" /env:SAContinue"
+			
+		Else
+			' Run the task sequence
+
+			oLogging.CreateEvent 41016, LogTypeInfo, "LTI beginning deployment", Array(oEnvironment.Item("DeploymentType"), oEnvironment.Item("DeploymentMethod"))
+			sCmd = """" & sTSPath & "\TsmBootstrap.exe"" /env:SAStart"
+			
+		End if
+
+		oLogging.CreateEntry "About to run command: " & sCmd, LogTypeInfo
+
+		oEnvironment.Item("LTIDirty") = "TRUE"
+		On Error Resume Next
+		iRetVal = oShell.Run(sCmd,, true)
+		On Error Goto 0
+
+
+		' Unregister the task sequence components
+
+		On Error Resume Next
+		oShell.Run "regsvr32.exe /u /s """ & sTSPath & "\tscore.dll""", 0, true
+		oShell.Run """" & sTSPath & "\TSProgressUI.exe"" /Unregister", 0, true
+		On Error Goto 0
+
+
+		' Reset the local root path
+
+		oUtility.ResetLocalRootPath
+
+
+		oLogging.CreateEntry "Command completed, return code = " & iRetVal, LogTypeInfo
+
+		
+		' Reboot if requested
+
+		If (iRetVal = -2147021886) then
+
+			oEnvironment.Item("LTIDirty") = "FALSE"
+		
+			' Reset the Destination Logical Drive ( Drive letter may have changed after rebooting )
+			oUtility.ClearRelativeDriveLetters
+
+			oLogging.CreateEvent 41017, LogTypeInfo, "LTI initiating task sequence-requested reboot.", Array()
+			If oEnvironment.Item("DeploymentType") = "CUSTOM" Then
+			
+				oEnvironment.Item("PHASE") = "CUSTOM"
+				
+			End If
+			If oEnv("SystemDrive") = "X:" then
+
+					If oEnvironment.Item("LTISuspend") = "True" then
+						oShell.Popup "The task sequence has been suspended. Reboot WinPE (Close all windows) to resume.", 60, "Suspended", 48
+					ElseIf oEnvironment.Item("LTISuspend") <> "" then
+						oShell.Popup "The task sequence has been suspended." & VbNewLine & oEnvironment.Item("LTISuspend") & VbNewLine & "Reboot WinPE (Close all windows) to resume.", 60, "Suspended", 48
+					End if
+					WScript.Quit 0
+
+			Else
+				If oEnvironment.Item("BootPE") <> "True" and oEnvironment.Item("IsOSUpgrade") <> "1" then
+					PopulateAutoAdminLogon
+				End If
+				If oEnvironment.Item("LTISuspend") = "" then
+					If OEnvironment.Item("BootPE") <> "True" and oEnvironment.Item("IsOSUpgrade") <> "1" then
+						SetStartMDT
+					End If
+					'Reset the variable
+					oEnvironment.Item("BootPE") = ""
+					Reboot
+					WScript.Sleep 600000  ' Wait for the system to be rebooted out from under the script
+				Else
+					If oEnvironment.Item("LTISuspend") = "True" then
+						oShell.Popup "The task sequence has been suspended.  Use the desktop shortcut to resume.", 60, "Suspended", 48
+					Else
+						oShell.Popup "The task sequence has been suspended." & VbNewLine & oEnvironment.Item("LTISuspend") & VbNewLine & "Use the desktop shortcut to resume.", 60, "Suspended", 48
+					End if
+					WScript.Quit 0
+				End if
+				
+			End if
+		' Process is complete
+		Else
+		
+				' Send an event	
+				On Error Resume Next				
+				sUpgradeFailureCode = oShell.RegRead("HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Windows\Win10UpgradeStatusCode")
+				
+				If sUpgradeFailureCode <> "" and ucase(sUpgradeFailureCode) = "FAILURE" then
+					oLogging.CreateEvent 41014, LogTypeError, "Litetouch deployment failed during Upgrade " , Array()
+					oLogging.CreateEntry "For more information, consult the task sequencer log ...\SMSTS.LOG.", LogTypeInfo
+					iRetVal = oEnvironment.Item("UpgradeErrorReturnCode")
+					
+				ElseIf iRetVal = 0 then				
+					
+					oLogging.CreateEvent 41015, LogTypeInfo, "LTI deployment completed successfully", Array("0")
+					If ucase(oEnvironment.Item("_DoNotCleanLiteTouch")) = "TRUE" then
+					
+						bIsOEM = True
+						
+					End if
+					
+				Else
+						oLogging.CreateEvent 41014, LogTypeError, "Litetouch deployment failed, Return Code = " & PrnErrValue ( iRetval ), Array(CStr(iRetVal))
+						oLogging.CreateEntry "For more information, consult the task sequencer log ...\SMSTS.LOG.", LogTypeInfo					
+
+				End if
+				
+				' Pass the return code to the wizard
+				oEnvironment.Item("RetVal") = Trim(CStr(iRetVal))
+
+				' Copy the logs
+
+				oLogging.CopyLog
+
+
+				' Save variables that we need				
+
+				sFinishAction = oEnvironment.Item("FinishAction")
+				bSkipFinalSummary = UCase(oEnvironment.Item("SkipFinalSummary")) = "YES"
+				bIsServerCoreOS = UCase(oEnvironment.Item("IsServerCoreOS")) = "TRUE"
+				sDisableDiskMgr = oEnvironment.Item("DisableTaskMgr")
+
+
+				' Copy needed summary wizard files to %TEMP%\DeploymentScripts
+				If (bSkipFinalSummary and iRetVal = 0) or bIsServerCoreOS then
+					' Do nothing
+				Else
+					
+					oUtility.VerifyPathExists oEnvironment.Substitute("%TEMP%\DeploymentScripts")
+					For each sFile in Array("Wizard.hta", "Wizard.css", "Wizard.ico", "ZTIUtility.vbs", "WizUtility.vbs", "ZTIConfigFile.vbs", "ZTIDiskUtility.vbs", "ZTIDataAccess.vbs", "header-image.png", "Computer.png", "Summary_Definition_ENU.xml", "Summary_Scripts.vbs", "plusicon.gif", "minusico.gif")
+						oFSO.CopyFile oEnv("ScriptRoot") & "\" & sFile, oEnvironment.Substitute("%TEMP%\DeploymentScripts") & "\" & sFile, true					
+					Next					
+				End if
+
+
+				' Clean up
+				
+				Cleanup
+
+
+				' Display the final summary wizard (unless skipped)
+
+				If (not bSkipFinalSummary) or iRetVal <> 0 then
+
+					If bIsServerCoreOS then
+						
+						If iRetVal = 0 then
+							
+							oShell.Popup "Deployment completed successfully.  Review deployment logs for full details.", 0, "Successful Deployment", 64
+								
+						Else
+							
+							oShell.Popup "Deployment did not complete successfully.  Review deployment logs for full details.", 0, "Failed Deployment", 48
+								
+						End if
+							
+					ElseIf bIsOEM = True then
+'///////////////////////////////////// Updated text box and set to auto-reboot 2016/01 -BG
+						i = oShell.Popup ( "The Deployment Share has copied to a local disk." & vbNewLine & vbNewLine &_
+							"REMOVE Flash disk and press OK (Enter) to begin reboot.", 20 * 60, "Finished!", vbOKCancel )
+						sFinishAction = "REBOOT"
+						If i <> vbCancel then
+							sFinishAction = "REBOOT"
+						End if
+'/////////////////////////////////////
+					Else
+
+						' Display the wizard
+						
+						sCmd = "MSHTA.exe """ & oEnvironment.Substitute("%TEMP%\DeploymentScripts") & "\Wizard.hta"" /definition:Summary_Definition_ENU.xml"
+						oShell.Run sCmd, 1, true
+
+
+						' Clean up the scripts
+
+						oFileHandling.RemoveFolderEx oEnvironment.Substitute("%TEMP%\DeploymentScripts"), oLogging.Debug
+
+					End if
+
+
+					' Clean up any files created since the initial full cleanup
+					
+					oFileHandling.RemoveFolderEx oUtility.LocalRootPath, oLogging.Debug
+									
+						
+				End If
+
+				
+				' Enable TaskMgr if it was disabled during the task sequence
+				
+				if UCase(sDisableDiskMgr) = "YES" then
+					oShell.RegWrite "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System\DisableTaskMgr", 0, "REG_DWORD"
+				End if		
+
+				' Process the finish action
+
+				Select Case UCase(sFinishAction)
+				Case "SHUTDOWN"
+					Shutdown
+				Case "RESTART", "REBOOT"
+					Reboot
+				Case "LOGOFF"
+					Logoff
+				End Select
+		End if
+
+
+		Main = iRetVal
+
+
+	End Function
+
+
+	Function RunAndLog(sCmd, bDebuggable)
+
+		Dim iRetVal
+		Dim iShow
+
+
+		If oLogging.Debug and bDebuggable then
+		
+			sCmd = sCmd & " /debug:true"
+			iShow = 1
+			
+		Else
+		
+			iShow = 0
+			
+		End if
+
+
+		oLogging.CreateEntry "About to run command: " & sCmd, LogTypeInfo
+
+		On Error Resume Next
+		iRetVal = oShell.Run(sCmd, iShow, true)
+		RunAndLog = iRetVal
+		On Error Goto 0
+
+		oLogging.CreateEntry "Command completed, return code = " & iRetVal, LogTypeInfo
+
+	End Function
+
+
+	Sub Reboot
+
+		Dim o, oOS
+
+		' Reboot
+
+		If oEnv("SystemDrive") = "X:" then
+			' Nothing to do, exiting will reboot
+		Else
+			Set oOS = GetObject("winmgmts:{(Shutdown)}//./root/cimv2").ExecQuery("select * from Win32_OperatingSystem where Primary=true")
+			For Each o in oOS
+				o.Win32Shutdown(6)
+			Next
+		End if
+
+	End Sub
+
+
+	Sub Shutdown
+
+		Dim o, oOS
+
+		' Shutdown
+
+		If oEnv("SystemDrive") = "X:" then
+			oShell.Run "WpeUtil.exe shutdown", 0, true
+			WScript.Sleep 60000
+		Else
+			Set oOS = GetObject("winmgmts:{(Shutdown)}//./root/cimv2").ExecQuery("select * from Win32_OperatingSystem where Primary=true")
+			For Each o in oOS
+				o.Win32Shutdown(12)
+			Next
+		End if
+
+	End Sub
+
+
+
+	Sub Logoff
+
+		Dim o, oOS
+
+		' Logoff
+
+		If oEnv("SystemDrive") = "X:" then
+			' Logoff is impossible, just exit so it reboots
+		Else
+			Set oOS = GetObject("winmgmts:{(Shutdown)}//./root/cimv2").ExecQuery("select * from Win32_OperatingSystem where Primary=true")
+			For Each o in oOS
+				o.Win32Shutdown(4)
+			
+			Next
+		End if
+
+	End Sub
+
+
+	Sub SetPropertyDefault ( Prop, Def, Notes )
+
+		' When Skipping wizard pages, it is possible that some required properties are not set.
+
+		If oEnvironment.Item( Prop ) = "" then
+
+			oLogging.CreateEntry "Default Property Check (" & Notes & "): " & Prop & " = " & Def, LogTypeInfo
+			oEnvironment.Item( Prop ) = Def
+
+		End if
+
+	End sub
+
+	Sub CleanupStartItems
+
+		' Clean up the run registry entry (if it exists)
+
+		On Error Resume Next
+		oShell.RegDelete "HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\RunOnce\LiteTouch"
+		On Error Goto 0
+
+
+		' Clean up the shortcut (if it exists)
+
+		If oFSO.FileExists(oShell.SpecialFolders("AllUsersStartup") & "\LiteTouch.lnk") then
+		
+			oFSO.DeleteFile oShell.SpecialFolders("AllUsersStartup") & "\LiteTouch.lnk"
+			
+		End if
+
+		On Error Resume Next
+		
+		oShell.RegWrite "HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon\AutoAdminLogon", "0", "REG_SZ"
+		
+		On Error Goto 0
+
+		oLogging.CreateEntry "CleanStartItems Complete", LogTypeInfo
+
+	End Sub
+
+	Sub QuickCleanup
+
+		Dim sCmd
+		Dim iRetVal
+		Dim oDrive
+
+		CleanupStartItems
+
+
+		oLogging.CreateEntry "Removing " & oUtility.LocalRootPath & " folder (final log entry)", LogTypeInfo
+		oFileHandling.RemoveFolderEx oUtility.LogPath, oLogging.Debug
+
+
+		' Release our references to the task sequence environment
+
+		On Error Resume Next
+		oEnvironment.Release
+		TestAndLog Success, "Releasing Environment"
+		On Error Goto 0
+
+
+		' Remove any existing in-progress task sequence 
+
+		For each oDrive in oUtility.GetAllFixedDrives(false)
+			If oFSO.FileExists(oDrive & "\_SMSTaskSequence\TSEnv.dat") then
+				oFileHandling.RemoveFolderEx oDrive & "\_SMSTaskSequence", oLogging.Debug
+			End if
+		Next
+
+
+		' Start clean (flushes out existing variable values)
+
+		oUtility.PrepareEnvironment
+
+	End sub
+
+
+	Sub Cleanup
+
+		Dim sCmd
+		Dim iRetVal
+
+
+		CleanupStartItems
+
+		' Unregister TSCORE.DLL (workaround)
+
+		If oFSO.FileExists(oUtility.LocalRootPath & "\Tools\" & oEnvironment.Item("Architecture") & "\TSCore.dll") then
+
+			oLogging.CreateEntry "Unregistering TSCore.dll.", LogTypeInfo
+			sCmd = "regsvr32 /u /s " & oUtility.LocalRootPath & "\Tools\" & oEnvironment.Item("Architecture") & "\TSCore.dll"
+			iRetVal = oShell.Run(sCmd, 0, false)
+			TestAndLog iRetVal, "Ran " & sCmd
+
+		Else
+
+			oLogging.CreateEntry "TSCore.dll not found, not unregistering.", LogTypeInfo
+
+		End if
+
+
+		' Release our references to the task sequence environment
+
+		On Error Resume Next
+		oEnvironment.Release
+		TestAndLog Success, "Releasing Environment"
+		On Error Goto 0
+
+
+		' Run LTICleanup to clean up the rest
+
+		sCmd = "wscript.exe """ & oUtility.ScriptDir & "\LTICleanup.wsf"""
+		oLogging.CreateEntry "About to run command: " & sCmd, LogTypeInfo
+		On Error Resume Next
+		iRetVal = oShell.Run(sCmd, 0, true)
+
+		On Error Goto 0
+
+	End Sub
+
+	Function ValidateDeployRootWithRecovery
+
+		Dim sARF
+		Dim sNetworkErrorHint
+		DIm iRetVal
+		Dim sLTISuspend
+
+		If oUtility.ValidateConnectionEx(oEnvironment.Item("DeployRoot"), True) = Success then
+			ValidateDeployRootWithRecovery = SUCCESS
+			exit function
+		End if
+		
+		sNetworkErrorHint = vbNewLine & GetNetworkingErrorHint(oEnvironment.Item("DeployRoot"))
+		oLogging.CreateEntry "Unable to connect to the deployment share " & oEnvironment.Item("DeployRoot") & "." & sNetworkErrorHint, LogTypeError
+
+		sARF = vbNewLine & vbNewLine & "Retry:  Try again to connect to the deployment share."
+		sARF =      sARF & vbNewLine & "Cancel: Give up, cancelling any in-progress task sequence."
+
+		iRetVal = oShell.Popup( "A connection to the deployment share (" & oEnvironment.Item("DeployRoot") & ") could not be made. " & sNetworkErrorHint & sARF, 0, "Wizard Error", 16 + 5 + 256)
+		If iRetVal = 2 or iRetVal = 3 then  ' Cancel or abort
+
+			oLogging.CreateEntry "ValidateDeployRootWithRecovery: Cancel", LogTypeInfo
+			Cleanup
+			oLogging.ReportFailure "ValidateDeployRootWithRecovery: Cancel" , 5210
+
+		ElseIf iRetVal = 4 then  ' Retry
+
+			oLogging.CreateEntry "ValidateDeployRootWithRecovery: Retry", LogTypeInfo
+			ValidateDeployRootWithRecovery
+
+		ElseIf iRetVal = 5 then  ' Ignore
+
+			' This logic isn't presently used because the default options don't provide an "ignore" option (which really means suspend).
+			' This caused issues because users didn't understand what this option did and would then attempt to do a new deployment,
+			' only to find out that the old one would try to resume.
+
+			' To enable this option, change the Popup method above to specify "16 + 2" instead of "16 + 5 + 256".
+			
+			oLogging.CreateEntry "ValidateDeployRootWithRecovery: Cancel (for now)...", LogTypeInfo
+				
+			If oEnv("SystemDrive") <> "X:" then
+				iRetVal = oUtility.FindFile ( "LTISuspend.wsf", sLTISuspend )
+				TestAndFail iRetVal, 10203, "FindFile(LTISuspend.wsf)"
+				iRetVal = oUtility.RunWithHeartbeat ( "cscript.exe //nologo """ & sLTISuspend & """" )
+				TestAndFail iRetVal, 10204, "Run Program " & sLTISuspend
+			End if
+
+			oLogging.ReportFailure "ValidateDeployRootWithRecovery: Cancel" , 5211
+
+		End if
+
+	End function
+
+
+	Function MoveCDrive
+
+		Dim iRetVal
+		Dim i
+		Dim oDrive
+		Dim sDrive
+		Dim sFile
+		Dim oFile
+
+
+		' Find an available drive letter
+
+		sDrive = ""
+		For i = Asc("M") to Asc("Z")
+			On Error Resume Next
+			Set oDrive = oFSO.GetDrive(Chr(i))
+			If Err then
+				sDrive = Chr(i)
+				Exit For
+			End if
+			
+			On Error Goto 0
+			
+		Next
+
+		If sDrive <> "" then
+
+			' Write the diskpart script
+
+			sFile = oEnv("TEMP") & "\LiteTouch_MoveC.txt"
+
+			Set oFile = oFSO.CreateTextFile(sFile, True, False)
+			oFile.WriteLine "select volume C:"
+			oFile.WriteLine "Assign letter=" & sDrive
+			oFile.Close
+
+
+			' Execute diskpart.exe
+
+			err.Clear
+			iRetVal = oShell.Run("cmd /c ""DISKPART.EXE /s """ & sFile & """""", 0, true)
+			TestAndLog iRetVal, "Ran diskpart to change drive letter"
+
+		Else
+			oLogging.CreateEntry "ERROR - No drive letters are available to change removable drive C:", LogTypeError
+		End if
+
+	End Function
+
+
+	Function GetNetworkingErrorHint(DeployRoot)
+		dim DeployHost, i,j
+
+		GetNetworkingErrorHint = ""
+
+		On error resume next
+
+		DeployHost = DeployRoot
+		
+		If instr(3,DeployRoot,"\",vbTextCompare) <> 0 then
+		
+			DeployHost = mid(DeployRoot,3,instr(3,DeployRoot,"\",vbTextCompare)-3)
+			
+		End if
+
+		''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+		If objWMI.ExecQuery("select * from win32_pingstatus where Address = '" & DeployHost & "' and ResponseTime <> NULL").Count > 0 then
+
+			' Positive reply from DeployRoot Server
+			GetNetworkingErrorHint = "Connection OK. Possible cause: invalid credentials."
+
+		ElseIf objWMI.ExecQuery("select * from win32_NetworkAdapterconfiguration where DHCPServer <> NULL").Count > 0 then
+
+			' DHCP OK, must be a network routing error or Virtual PC Configuraiton problem
+			GetNetworkingErrorHint = "Can not reach DeployRoot. Possible cause: Network routing error or Network Configuration error."
+
+		ElseIf objWMI.ExecQuery("select * from win32_NetworkAdapter where Installed = true and adaptertypeid = 0").Count > 0 then
+
+			' There is a valid Networking device present, yet the DHCP address is bad.
+			GetNetworkingErrorHint = "DHCP Lease was not obtained for any Networking device! Possible Cause: Check physical connection."
+
+		Else
+
+			For Each i in objWMI.InstancesOf("Win32_PnPEntity")
+
+				For Each j in i.CompatibleID
+					If ucase(right(j,8)) = "\CC_0200" then
+					
+						GetNetworkingErrorHint = "The following networking device did not have a driver installed."
+						GetNetworkingErrorHint = GetNetworkingErrorHint & vbNewLine & i.HardwareID(0)
+						exit function
+						
+					End if
+					
+				Next
+				
+			Next
+
+			' Are you kidding me? THis is the 21st century, what kind of computer doesn't have a networking adatper?
+			GetNetworkingErrorHint = "No networking devices were found on this machine!"
+
+		End if
+
+		on error goto 0
+
+	End function
+
+	Function PopulateAutoAdminLogon
+
+		Dim iRetVal, colUserAccounts, oAccount,bAutoAdminLogon,AdminAccount
+		On Error Resume Next
+		bAutoAdminLogon = oShell.RegRead("HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon\AutoAdminLogon")
+		On Error Goto 0
+		If bAutoAdminLogon = 0 then
+
+			'Determine Local Administrator Account
+			Set colUserAccounts = objWMI.ExecQuery("Select * From Win32_UserAccount where LocalAccount = TRUE")
+			For each oAccount in colUserAccounts
+				If Left(oAccount.SID, 6) = "S-1-5-" and Right(oAccount.SID, 4) = "-500" Then
+					AdminAccount = oAccount.Name
+				End iF
+			Next
+			iRetval = oShell.RegWrite("HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon\AutoAdminLogon", 1, "REG_SZ")
+			iRetval = oShell.RegWrite("HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon\AutoLogonCount", 999, "REG_SZ")
+			iRetval = oShell.RegWrite("HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon\DefaultUserName", AdminAccount, "REG_SZ")
+
+			iRetVal = oShell.RegWrite("HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon\DefaultDomainName", ".", "REG_SZ")
+
+			iRetval = oShell.RegWrite("HKEY_LOCAL_MACHINE\Software\Microsoft\Windows NT\CurrentVersion\Winlogon\DefaultPassword", oEnvironment.Item("AdminPassword"), "REG_SZ")
+			TestAndLog iRetVal, "Updated registry with AutoLogon"
+			wscript.sleep 5000
+
+		Else
+		
+			PopulateAutoAdminLogon = Success
+			Exit Function
+			
+		End If
+
+		PopulateAutoAdminLogon = Success
+
+	End Function
+
+	Sub SetStartMDT
+
+		Dim oLink
+
+		' Make sure the scripts are local
+
+		If not oFSO.FileExists(oUtility.LocalRootPath & "\Scripts\LiteTouch.wsf") then
+
+			' Run LTICopyScripts.wsf to copy the needed scripts locally
+			oShell.Run "wscript.exe """ & oUtility.ScriptDir & "\LTICopyScripts.wsf""", 0, true
+
+		End if
+
+
+		' Set up to automatically run me, using the appropriate method
+
+		If oFSO.FileExists(oEnv("SystemRoot") & "\Explorer.exe") and UCase(oEnvironment.Item("HideShell")) <> "YES" then
+
+			' If shortcut for LiteTouch.wsf doesn't exist then create a new shortcut.
+
+			If not oFSO.FileExists(oShell.SpecialFolders("AllUsersStartup") & "\LiteTouch.lnk") then
+
+			    ' Not Server Core, create a shortcut
+			    oLogging.CreateEntry "Creating startup folder item to run LiteTouch.wsf once the shell is loaded.", LogTypeInfo
+
+			    Set oLink = oShell.CreateShortcut(oShell.SpecialFolders("AllUsersStartup") & "\LiteTouch.lnk")
+			    oLink.TargetPath = "wscript.exe"
+			    oLink.Arguments = """" & oUtility.LocalRootPath & "\Scripts\LiteTouch.wsf"""
+			    oLink.Save
+
+			    oLogging.CreateEntry "Shortcut """ & oShell.SpecialFolders("AllUsersStartup") & "\LiteTouch.lnk"" created.", LogTypeInfo
+
+			Else
+			     oLogging.CreateEntry "Shortcut """ & oShell.SpecialFolders("AllUsersStartup") & "\LiteTouch.lnk"" already exists.", LogTypeInfo
+			End If
+
+		Else
+
+			' Server core or "hidden shell", register a "RunOnce" item
+
+			oLogging.CreateEntry "Creating RunOnce registry key to run LiteTouch.wsf for the next reboot.", LogTypeInfo
+
+			On Error Resume Next
+			oShell.RegWrite "HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\RunOnce\LiteTouch", "wscript.exe """ & oUtility.LocalRootPath & "\Scripts\LiteTouch.wsf""", "REG_SZ"
+			TestAndLog SUCCESS, "Wrote Run registry key"
+			
+			if UCase(oEnvironment.Item("DisableTaskMgr")) = "YES" then
+				oShell.RegWrite "HKCU\Software\Microsoft\Windows\CurrentVersion\Policies\System\DisableTaskMgr", 1, "REG_DWORD"
+				TestAndLog SUCCESS, "Wrote disable Task Manager registry key"
+			End if		
+			
+			On Error Goto 0
+
+			' Allow execution to continue (assuming new RunOnce item won't actually be run yet)
+
+		End if
+
+			
+	End Sub
+	
+	Sub ExtendSMSTSLogSize
+		
+		Dim fSmsTSIni
+		Set fSmsTSIni = oFSO.CreateTextFile(oEnv("SystemRoot") & "\smsts.ini", True)
+		fSmsTSINI.Close
+		TestAndLog SUCCESS, "Created SMSTS.INI file at " & oEnv("SystemRoot")
+		oUtility.WriteIni oEnv("SystemRoot") & "\smsts.ini", "Logging", "LogMaxSize", "10000000" 
+		oUtility.WriteIni oEnv("SystemRoot") & "\smsts.ini", "Logging", "LogMaxHistory", "1"
+
+	End Sub
+
+	Sub EnableDaRT
+
+		Dim tries
+		Dim oInv
+		Dim oTicketNode
+		Dim oIPNode
+		Dim dicPortList
+		Dim dicIPList
+
+		
+		' Remote control is only supported in Windows PE (don't use OSVersion as it isn't set yet for refresh)
+
+		If oEnv("SystemDrive") <> "X:" then
+			Exit Sub
+		End if
+
+
+		' Initialize
+
+		Set dicIPList = CreateObject("Scripting.Dictionary")
+		Set dicPortList = CreateObject("Scripting.Dictionary")
+
+
+		' Make sure the executable exists
+
+		If not oFSO.FileExists(oEnv("SystemRoot") & "\System32\RemoteRecovery.exe") then
+			Exit Sub
+		End if
+
+
+		' Start remote recovery process
+
+		oShell.CurrentDirectory = oEnv("SystemRoot") & "\System32"
+		oShell.Run oEnv("SystemRoot") & "\System32\RemoteRecovery.exe -nomessage", 2, false
+
+
+		' Sleep until we see the inv32.xml file
+
+		tries = 0
+		Do
+			WScript.Sleep 1000
+			tries = tries + 1
+		Loop While not oFSO.FileExists(oEnv("SystemRoot") & "\System32\inv32.xml") and tries < 10
+
+		If not oFSO.FileExists(oEnv("SystemRoot") & "\System32\inv32.xml") then
+			oLogging.CreateEntry "Unable to find the inv32.xml file, DaRT remote control is not running.", LogTypeInfo
+			Exit Sub
+		End if
+
+
+		' Read the XML file and put the values into variables
+
+		On Error Resume Next
+
+		Set oInv = oUtility.CreateXMLDOMObjectEx(oEnv("SystemRoot") & "\System32\inv32.xml")
+		Set oTicketNode = oInv.SelectSingleNode("//A")
+		oEnvironment.Item("DartTicket") = oTicketNode.Attributes.getNamedItem("ID").value
+
+		' First get the IPv4 entries (skipping locally-administered ones)
+		For each oIPNode in oInv.SelectNodes("//L")
+			If Instr(oIPNode.Attributes.getNamedItem("N").value, ":") = 0 and Left(oIPNode.Attributes.getNamedItem("N").value, 4) <> "169." then
+				dicIPList.Add oIPNode.Attributes.getNamedItem("N").value, ""
+				dicPortList.Add oIPNode.Attributes.getNamedItem("P").value, ""
+			End if
+		Next
+
+		' Then add the IPv6 entries
+		For each oIPNode in oInv.SelectNodes("//L")
+			If Instr(oIPNode.Attributes.getNamedItem("N").value, ":") > 0 then
+				dicIPList.Add oIPNode.Attributes.getNamedItem("N").value, ""
+				dicPortList.Add oIPNode.Attributes.getNamedItem("P").value, ""
+			End if
+		Next
+		oEnvironment.ListItem("DartIP") = dicIPList
+		oEnvironment.ListItem("DartPort") = dicPortList
+
+	End Sub
+
+
+	Function GetItemFromBCD ( oBCDStore, sObject, iItem )
+
+		Dim oObject
+		Dim bResult
+
+		' Get the ID for {current}
+		on error resume next
+		bResult = oBCDStore.OpenObject (sObject, oObject)
+		If Err = 0 and bResult = true then
+			bResult = oObject.GetElement( iItem, GetItemFromBCD )
+		End if
+		on error goto 0 
+		If not IsObject(GetItemFromBCD) then
+			set GetItemFromBCD = nothing ' Normalize Output
+		End if
+
+	End function 
+
+	Function IsWinRE
+
+		Dim bResult
+		Dim oBCD
+		Dim oBCDStore
+		Dim sCurrentGUID
+		Dim sWinREPath
+
+		IsWinRE = false
+
+		on error resume next
+		set oBCD = GetObject( "winmgmts:{impersonationlevel=Impersonate,(Backup,Restore)}!root/wmi:BcdStore" )
+		on error goto 0
+		If oBCD is nothing then
+			oLogging.CreateEntry "Unable to connect to WMI.", LogTypeInfo
+			exit function
+		End if
+
+		bResult = oBCD.OpenStore( "", oBCDStore )
+		If bResult <> true then
+			oLogging.CreateEntry "Unable to connect to BCDStore.", LogTypeInfo
+			exit function
+		End if
+
+		on error resume next
+		sCurrentGUID = GetItemFromBCD ( oBCDStore, "{fa926493-6f1c-4193-a414-58f0b2456d1e}", &h12000004 ).ObjectID
+		on error goto 0 
+		If IsEmpty(sCurrentGUID) then
+			oLogging.CreateEntry "Unable to get Current ID.", LogTypeInfo
+			exit function
+		End if
+
+		oLogging.CreateEntry "BCD {Current} = " & sCurrentGUID, LogTypeInfo
+		If GetItemFromBCD ( oBCDStore, sCurrentGUID, &h46000010 ) is nothing then
+			oLogging.CreateEntry "Special WinRE Object not found, this is regular WinPE.", LogTypeInfo
+			exit function
+		End if 
+
+		oLogging.CreateEntry "Found WinRE ID!", LogTypeInfo
+		on error resume next
+		sWinREPath = GetItemFromBCD ( oBCDStore, sCurrentGUID, &h11000001 ).Device.Path
+		on error goto 0 
+
+		oLogging.CreateEntry "WinRE path: [" & sWinREPath & "]", LogTypeInfo
+		IsWinRE = not IsEmpty(sWinREPath)
+
+	End function 
+
+	Function TestForWinREAndLaunch
+
+		Dim rc
+
+		If oEnv("SystemDrive") <> "X:" then
+			oLogging.CreateEntry "Not running within WinPE.", LogTypeInfo
+			exit function
+		End if
+
+		If oUtility.Arguments.Exists("DoNotRestartWinRE") Then
+			oLogging.CreateEntry "We are running with a *nested* instance of WinRE.", LogTypeInfo
+			exit function
+		End if 
+
+		If not IsWinRE then
+			oLogging.CreateEntry "Not running within WinPE or WinRE.", LogTypeInfo
+			exit function
+		End if
+
+		if not oFSO.FileExists("x:\Sources\Recovery\RecEnv.exe" ) then
+			oLogging.CreateEntry "RecEnv.exe not found.", LogTypeInfo
+			exit function
+		End if
+
+		If oFSO.FileExists( "x:\Sources\Recovery\Tools\WinREConfig.xml") then
+			oLogging.CreateEntry "WinRE already has a custom experience x:\Sources\Recovery\Tools\WinREConfig.xml.", LogTypeInfo
+			exit function
+		End if
+
+
+		'
+		' Run WinRE!
+		'
+
+		oUtility.VerifyPathExists "x:\Sources\Recovery\Tools"
+
+		With oFSO.CreateTextFile("x:\Sources\Recovery\Tools\WinREConfig.xml",true,false)
+			If ucase(oEnv("Processor_Architecture")) = "AMD64" then
+				.WriteLine "<Recovery><RecoveryTools><RelativeFilePath>..\..\..\Deploy\Tools\x64\WinRERun.exe</RelativeFilePath></RecoveryTools></Recovery>"
+			Else
+				.WriteLine "<Recovery><RecoveryTools><RelativeFilePath>..\..\..\Deploy\Tools\x86\WinRERun.exe</RelativeFilePath></RecoveryTools></Recovery>"
+			End if
+			.Close
+		End With
+
+		rc = oUtility.RunWithHeartbeat("x:\Sources\Recovery\RecEnv.exe")
+
+		wscript.quit 0
+
+	End function
+
+End Class
+   </script>
+</job>
