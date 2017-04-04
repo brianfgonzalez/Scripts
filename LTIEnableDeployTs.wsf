@@ -1,0 +1,103 @@
+<job id="LTIEnableDeployTs">
+	<script language="VBScript" src="ZTIUtility.vbs"/>
+	<script language="VBScript" src="ZTIDiskUtility.vbs"/>
+	<script language="VBScript">
+
+' // ***************************************************************************
+' // 
+' // Copyright (c) Microsoft Corporation.  All rights reserved.
+' // 
+' // Microsoft Deployment Toolkit Solution Accelerator
+' //
+' // File:      LTIEnableDeployTs.wsf
+' // 
+' // Version:   6.3.8443.1000
+' // 
+' // Purpose:   Prepare contents of MDT on local Hard disk from removale media
+' //            for OEM deployments.
+' // 
+' // Usage:     cscript.exe [//nologo] LTIEnableDeployTs.wsf [/debug:true] [/BdeInstall:TRUE]
+' // 
+' // ***************************************************************************
+
+Option Explicit
+RunNewInstance
+
+
+'//----------------------------------------------------------------------------
+'//  Main Class
+'//----------------------------------------------------------------------------
+
+Class LTIEnableDeployTs
+
+	'//----------------------------------------------------------------------------
+	'//  Main routine
+	'//----------------------------------------------------------------------------
+
+	Function Main
+	
+		' Local Variables
+		Dim iRetVal
+		Dim oTaskSequences
+		Dim oTaskSequence
+		Dim sOemCsPath
+		Dim sDeploymentID
+		Dim sLocalControl
+
+		iRetVal = SUCCESS
+		'''''''''''''''''''''''''''''''''''''''''''''''''''
+		'
+		' Main script processing
+		'
+		'''''''''''''''''''''''''''''''''''''''''''''''''''
+		'
+		' Begin Update of TaskSequences.XML
+		'
+		'''''''''''''''''''''''''''''''''''''''''''''''''''
+		sLocalControl =  oEnvironment.Item("OSDISK") & "\" & mid(oEnvironment.Item("DeployRoot"),4) & "\Control"
+		oLogging.ReportProgress "Ensure that the Deployment Task Sequence is enabled",10
+		oLogging.CreateEntry "Ensure that the Deployment Task Sequence is enabled", LogTypeInfo
+		oLogging.CreateEntry "Open DeployRoot's XML File: " & oEnvironment.Item("DeployRoot") & "\Control\TaskSequences.xml", LogTypeInfo
+		Set oTaskSequences = oUtility.CreateXMLDOMObjectEx(oEnvironment.Item("DeployRoot") & "\Control\TaskSequences.xml")
+		Set oTaskSequence = oTaskSequences.selectSingleNode("//ts[contains(ID,'DEP')]")
+		If oTaskSequence is Nothing then
+			oLogging.CreateEntry "ERROR: Invalid task sequence ID specified", LogTypeError
+			Exit Function
+		End if
+		sDeploymentID = oUtility.SelectSingleNodeString(oTaskSequence,"ID")
+		oLogging.CreateEntry "Found Task Sequence (" & sDeploymentID & ")", LogTypeInfo
+		oTaskSequence.attributes.getNamedItem("enable").value = "True"
+		oUtility.VerifyPathExists sLocalControl
+		oLogging.CreateEntry "Save updated XML File: " & sLocalControl & "\TaskSequences.xml", LogTypeInfo
+		oTaskSequences.Save sLocalControl & "\TaskSequences.xml"
+		'''''''''''''''''''''''''''''''''''''''''''''''''''
+		'
+		' Begin Update of CustomSettings.ini
+		'
+		'''''''''''''''''''''''''''''''''''''''''''''''''''
+		sOemCsPath = sLocalControl & "\CustomSettings.ini"
+		oLogging.CreateEntry "Attempting to update " & sOemCsPath & "'s TaskSequenceID with " & sDeploymentID, LogTypeInfo
+		oUtility.VerifyPathExists sOemCsPath
+		oUtility.WriteIni sOemCsPath, "Default", "TaskSequenceID" , sDeploymentID
+		oUtility.WriteIni sOemCsPath, "Default", "SkipTaskSequence", "YES" 
+		oUtility.WriteIni sOemCsPath, "Default", "SkipComputerName", "YES" 
+		oUtility.WriteIni sOemCsPath, "Default", "OSDComputerName" , oEnvironment.Item("OSDComputerName")
+		'''''''''''''''''''''''''''''''''''''''''''''''''''
+		'
+		' Finished!
+		'
+		oEnvironment.Item("_DoNotCleanLiteTouch") = "TRUE"
+		oLogging.CreateEntry "LTIEnableDeployTs.wsf completed successfully.", LogTypeInfo
+
+
+		'Cleanup and Exit
+		Main = iRetVal
+
+	End Function
+	
+
+End class
+
+	</script>
+</job>
+
