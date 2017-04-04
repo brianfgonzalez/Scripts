@@ -177,7 +177,8 @@ while($sMore -ne $null)
 
 # Create ocb xml file
 [xml]$oXml = '<?xml version="1.0"?><ocbs></ocbs>'
-$aOcbFiles = $aOcbFiles | Sort-Object id -Unique | ? { $_.name -imatch ".*MK\d-\d{1,2}(x64|x86)\.exe" } | `
+$aOcbFiles = $aOcbFiles | Sort-Object id -Unique |
+? { $_.name -imatch ".*MK\d-\d{1,2}(x64|x86)(_V\d.\d\.exe|\.exe)" } | `
 % {
     $oOcbRoot = $oXml["ocbs"].AppendChild($oXml.CreateElement('ocb'))
     $oOcbRoot.SetAttribute("name",$_.name)
@@ -193,7 +194,7 @@ $aOcbFiles = $aOcbFiles | Sort-Object id -Unique | ? { $_.name -imatch ".*MK\d-\
 
     #pull model and os from name
     $oOcbModel = $oOcbRoot.AppendChild($oXml.CreateElement('model'))
-    ('{0}' -f $_.name) -imatch "(..)[a-z0-9]*-(MK[0-9]*)-([a-z0-9]*).exe"
+    ('{0}' -f $_.name) -imatch "(..)[a-z0-9]*-(MK[0-9]*)-([a-z0-9]*)(_V\d.\d\.exe|\.exe)"
     $oOcbModel.InnerXml = ('{0}{1}' -f $matches[1],(('{0}' -f $matches[2]) -ireplace 'MK','mk') )
     $oOcbOs = $oOcbRoot.AppendChild($oXml.CreateElement('os'))
     $oOcbOs.InnerXml = ( ('{0}' -f $matches[3]) -ireplace 'X','x' -ireplace '\.','' )
