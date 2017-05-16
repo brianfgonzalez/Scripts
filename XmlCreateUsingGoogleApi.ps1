@@ -136,7 +136,7 @@ $oCabFiles | Sort-Object id -Unique | ? { $_.name -imatch "\d{1,2}(x64|x86)_.*\.
 
     #pull model from name
     $oCabModel = $oCabRoot.AppendChild($oXml.CreateElement('model'))
-    ('{0}' -f $_.name) -imatch "PDP_([a-z\-0-9]*)"
+    ('{0}' -f $_.name) -imatch "PDP_(([a-z\-0-9]*)MK([0-9]))"
     $oCabModel.InnerXml = (('{0}' -f $matches[1]) -ireplace "(FZ|CF|\-)","" -ireplace "MK","mk")
 
     #pull os from name

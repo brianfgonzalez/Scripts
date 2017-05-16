@@ -1,0 +1,108 @@
+﻿<job id="RecoveryImageCapture">
+  <script language="VBScript" src="../../Scripts/ZTIUtility.vbs"/>
+  <script language="VBScript" src="../../Scripts/ZTIBCDUtility.vbs"/>
+  <script language="VBScript" src="../../Scripts/ZTIDiskUtility.vbs"/>
+  <script language="VBScript">
+' // ***************************************************************************
+' // 
+' // Copyright (c) Microsoft Corporation.  All rights reserved.
+' // 
+' // Microsoft Deployment Toolkit Solution Accelerator
+' //
+' // File:      RecoveryImageCapture.wsf
+' // 
+' // Version:   6.3.8443.1000
+' // 
+' // Purpose:   Adds capture and Panasonic recovery WIMs and nessesary boot options.
+' // 
+' // Usage:     cscript RecoveryImageCapture.wsf [/debug:true]
+' // 
+' // ***************************************************************************
+Option Explicit
+RunNewInstance
+'//----------------------------------------------------------------------------
+'//  Main Class
+'//----------------------------------------------------------------------------
+Class RecoveryImageCapture
+  '//----------------------------------------------------------------------------
+  '//  Main routine
+  '//----------------------------------------------------------------------------
+  Function Main
+  
+    '//----------------------------------------------------------------------------
+    '//  Declare variables
+    '//----------------------------------------------------------------------------
+    Dim iRetVal, iSuffix, iMediaSuffix, sOsLetter, aSuffix
+    Dim sRecoveryPartitionGUID, sRecoveryGuid, sReturn, sMatch, oMatches
+    iRetVal = Success
+    '//----------------------------------------------------------------------------
+    RunDiskPartSilent array(_
+      "SEL DISK 0", _
+      "SEL PART 1", "ASSIGN LETTER=S", _
+      "SEL PART 4", "ASSIGN LETTER=R", _
+      "SEL PART 5", "ASSIGN LETTER=O", "EXIT")
+
+    sOsLetter = GetFirstPossibleSystemDrive
+
+    oUtility.RunWithConsoleLogging "robocopy.exe /mir /ndl /njs /njh """ & oUtility.ScriptDir & "\recovery" & """ ""R:"""
+    oUtility.RunWithConsoleLogging "robocopy.exe /mir /ndl /njs /njh """ & oUtility.ScriptDir & "\oem" & """ ""O:"""
+    oUtility.RunWithConsoleLogging sOsLetter & "\Windows\System32\ReAgentc.exe /setreimage /path R:\Recovery\WindowsRE /target " & sOsLetter & "\Windows"
+    oUtility.RunWithConsoleLogging "dism.exe /capture-image /capturedir:" & sOsLetter & "\" &" /imagefile:" & sOsLetter & "\install.wim " & "/name:""Image for Recovery"""
+
+    oLogging.ReportProgress "Splitting captured " & sOsLetter & "\install.wim.", 25
+    oUtility.RunWithConsoleLogging "dism.exe /split-image /imagefile:" & sOsLetter & "\install.wim /swmfile:" & sOsLetter & "\install.swm /filesize:3650"
+    oFileHandling.DeleteFile sOsLetter & "\install.wim"
+    aSuffix = array("",2,3,4,5)
+    For Each iSuffix in aSuffix
+      If oFSO.FileExists(sOsLetter & "\install" & iSuffix & ".swm") Then
+        If iSuffix = "" Then
+          iMediaSuffix = "1"
+        Else
+          iMediaSuffix = iSuffix
+        End If
+        oLogging.ReportProgress "Copying install" & iSuffix & ".swm to Recovery partition.", 50
+        oUtility.RunWithConsoleLogging "robocopy.exe /ndl /njs /njh " & sOsLetter & " O:\Media." & iMediaSuffix & " install" & iSuffix & ".swm"
+        oFileHandling.DeleteFile sOsLetter & "\install" & iSuffix & ".swm"
+      End If
+    Next
+    'oUtility.RunWithConsoleLogging "cmd /c @echo off & for /f ""tokens=*"" %i in ('find /i """ & strStringToKeep & """ " & strFile & "') do (echo %i)"
+
+    oBCDUtility.DumpBCDStore
+    RunBCDEdit "/delete " & BDD_RAMDISK_GUID & " /cleanup"
+    RunBCDEdit "/delete {ramdiskoptions} /f"
+    
+    ' Add BCD Entries for to Recovery Part's BCD to Recovery WIM
+    sRecoveryGuid = oStrings.GenerateRandomGUID
+    RunBCDEdit "/delete " & sRecoveryGuid & " /f"
+    RunBCDEdit "/create {ramdiskoptions} -d ""RamdiskSDI"""
+    RunBCDEdit "/set {ramdiskoptions} ramdisksdidevice partition=O:"
+    RunBCDEdit "/set {ramdiskoptions} ramdisksdipath \Media.1\boot\boot.sdi"
+
+    RunBCDEdit "/create " & sRecoveryGuid & " /d ""Panasonic Recovery Partition"" -application osloader"
+    RunBCDEdit "/set " & sRecoveryGuid & " systemroot \windows"
+    RunBCDEdit "/set " & sRecoveryGuid & " detecthal yes"
+    RunBCDEdit "/set " & sRecoveryGuid & " winpe yes"
+    RunBCDEdit "/set " & sRecoveryGuid & " path \windows\system32\winload.efi"
+    RunBCDEdit "/set " & sRecoveryGuid & " osdevice ramdisk=[O:]\Media.1\sources\boot.wim,{ramdiskoptions}"
+    RunBCDEdit "/set " & sRecoveryGuid & " device ramdisk=[O:]\Media.1\sources\boot.wim,{ramdiskoptions}"
+    RunBCDEdit "/set " & sRecoveryGuid & " nx optin"
+
+    ' Add Windows Boot Manager for Recovery Partition
+    RunBCDEditEx "/copy {bootmgr} /d ""Recovery Partition Boot Manager""", "", sReturn
+    For Each sMatch in oRegEx.GetRegExMatches("(\{[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\})", sReturn)
+      RunBCDEdit "/set " & sMatch & " default " & sRecoveryGuid
+      RunBCDEdit "/set " & sMatch & " displayorder " & sRecoveryGuid
+    Next
+    RunBCDEdit "/set {fwbootmgr} displayorder {bootmgr} /addfirst"
+    oBCDUtility.DumpBCDStore
+
+    oUtility.RunWithConsoleLogging oUtility.ScriptDir & "\SetRecoveryBoot.exe -remove"
+    oUtility.RunWithConsoleLogging oUtility.ScriptDir & "\SetRecoveryBoot.exe -add"
+    RunDiskPartSilent array(_
+      "SEL DISK 0", _
+      "SEL PART 4", "SET ID=de94bba4-06d1-4d40-a16a-bfd50179d6ac", "GPT ATTRIBUTES=0x8000000000000001", "OFFLINE", _
+      "SEL PART 5", "SET ID=de94bba4-06d1-4d40-a161-bfd50179d6ac", "GPT ATTRIBUTES=0x8000000000000001", "OFFLINE", "exit" )
+  End Function
+End Class
+    </script>
+</job>
