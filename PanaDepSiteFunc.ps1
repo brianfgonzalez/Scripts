@@ -1,4 +1,5 @@
-﻿$GitUrl = 'ssh://557efa6d5004468c93000167@panasonic-cablocator.rhcloud.com/~/git/panasonic.git/'
+﻿$GitFolder = "C:\Users\Administrator\AppData\Local\GitHub\PortableGit_f02737a78695063deace08e96d5042710d3e32db\cmd"
+$GitUrl = 'ssh://557efa6d5004468c93000167@panasonic-cablocator.rhcloud.com/~/git/panasonic.git/'
 $sLocalRepo = "$env:SystemDrive\cablocator"
 
 function fInitialSetup
@@ -34,7 +35,7 @@ function fInitialSetup
 
     #Clone the repo
     If ( Test-Path($sLocalRepo) ) { Remove-Item $sLocalRepo -Recurse -Force }
-    & "$env:ProgramFiles\Git\Cmd\git.exe" clone "$GitUrl" "$sLocalRepo"
+    & "$GitFolder\git.exe" clone "$GitUrl" "$sLocalRepo"
     & explorer.exe "$sLocalRepo"
 }
 
@@ -43,10 +44,10 @@ function fPerformSync
 Param([String]$sCommitTag="Desired Changes")
 #Example commands for commiting changes
 Set-Location "$sLocalRepo"
-& "$env:ProgramFiles\Git\Cmd\git.exe" add --all
-& "$env:ProgramFiles\Git\Cmd\git.exe" commit -m "$sCommitTag"
-& "$env:ProgramFiles\Git\Cmd\git.exe" push
+& "$GitFolder\git.exe" add --all
+& "$GitFolder\git.exe" commit -m "$sCommitTag"
+& "$GitFolder\git.exe" push
 }
 
 #fInitialSetup
-fPerformSync -sCommitTag "Updated CABs and OCBs xml placing depricated cabs in trash on gdrive."
+fPerformSync -sCommitTag "Updated CABs xml with 54mk3."

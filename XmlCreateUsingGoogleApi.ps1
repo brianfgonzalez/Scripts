@@ -107,7 +107,7 @@ if(!($sRefreshToken)){
 #---------------------------------------------------
 $t = 'https://www.googleapis.com/drive/v3/files?'
 #Build query uri pre-encoded, i used "https://developers.google.com/apis-explorer/#p/drive/v3/drive.files.list" to build query string
-$y = 'corpus=user&pageSize=1000&q=name+contains+%22PDP%22+and+fileExtension%3D%22cab%22&'+`
+$y = 'corpus=user&pageSize=1000&q=fileExtension%3D%22cab%22&'+`
     'spaces=drive&fields=files(fileExtension%2Cid%2Cname%2Csize%2Cmd5Checksum%2CcreatedTime%2Cparents)%2CnextPageToken'
 $oCabResults = (Invoke-RestMethod ('{0}{1}' -f $t,$y) -Headers @{"Authorization" = "Bearer $sAccessToken"})
 $oCabFiles = $oCabResults.files
@@ -118,6 +118,8 @@ while($sMore -ne $null)
     $oCabFiles += $oCabResults.files
     if ($oCabResults.nextPageToken -eq $sMore) { $sMore = $null }
 }
+
+
 # Create cabs xml file
 [xml]$oXml = '<?xml version="1.0"?><cabs></cabs>'
 $oCabFiles | Sort-Object id -Unique | ? { $_.name -imatch "\d{1,2}(x64|x86)_.*\.cab" } | `
@@ -135,9 +137,17 @@ $oCabFiles | Sort-Object id -Unique | ? { $_.name -imatch "\d{1,2}(x64|x86)_.*\.
     }
 
     #pull model from name
+    $Matches = $null
     $oCabModel = $oCabRoot.AppendChild($oXml.CreateElement('model'))
     ('{0}' -f $_.name) -imatch "PDP_(([a-z\-0-9]*)MK([0-9]))"
-    $oCabModel.InnerXml = (('{0}' -f $matches[1]) -ireplace "(FZ|CF|\-)","" -ireplace "MK","mk")
+    if ($Matches -eq $null)
+    {
+        ('{0}' -f $_.name) -imatch "(..)[a-z0-9]*_(MK[0-9]*)"
+        $oCabModel.InnerXml = (('{0}{1}' -f $matches[1],$matches[2]) -ireplace "(FZ|CF|\-)","" -ireplace "MK","mk")
+    } else {
+        # Section built to support new naming convention '54GHJ_Mk3_Win10x64_1511_1607_V1.00.cab'
+        $oCabModel.InnerXml = (('{0}' -f $matches[1]) -ireplace "(FZ|CF|\-)","" -ireplace "MK","mk")
+    }
 
     #pull os from name
     $oCabOs = $oCabRoot.AppendChild($oXml.CreateElement('os'))
@@ -193,9 +203,18 @@ $aOcbFiles = $aOcbFiles | Sort-Object id -Unique |
     }
 
     #pull model and os from name
+    $Matches = $null
     $oOcbModel = $oOcbRoot.AppendChild($oXml.CreateElement('model'))
     ('{0}' -f $_.name) -imatch "(..)[a-z0-9]*-(MK[0-9]*)-([a-z0-9]*)(_V\d.\d\.exe|\.exe)"
-    $oOcbModel.InnerXml = ('{0}{1}' -f $matches[1],(('{0}' -f $matches[2]) -ireplace 'MK','mk') )
+    if ($Matches -eq $null)
+    {
+        # Section built to support new naming convention '54GHJ_Mk3_Win10x64_1511_1607_V1.00.exe'
+        ('{0}' -f $_.name) -imatch "(..)[a-z0-9]*_(MK[0-9]*)"
+        $oOcbModel.InnerXml = (('{0}' -f $matches[1]) -ireplace "(FZ|CF|\-)","" -ireplace "MK","mk")
+    } else {
+        $oOcbModel.InnerXml = (('{0}{1}' -f $matches[1],$matches[2]) -ireplace "(FZ|CF|\-)","" -ireplace "MK","mk")
+    }
+
     $oOcbOs = $oOcbRoot.AppendChild($oXml.CreateElement('os'))
     $oOcbOs.InnerXml = ( ('{0}' -f $matches[3]) -ireplace 'X','x' -ireplace '\.','' )
 
