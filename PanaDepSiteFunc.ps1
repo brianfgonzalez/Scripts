@@ -50,4 +50,4 @@ Set-Location "$sLocalRepo"
 }
 
 #fInitialSetup
-fPerformSync -sCommitTag "Updated CABs xml with 54mk3."
+fPerformSync -sCommitTag "Adding WWAN banner."
