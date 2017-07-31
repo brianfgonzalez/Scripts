@@ -176,7 +176,7 @@ $t = 'https://www.googleapis.com/drive/v3/files?'
 $y = 'corpus=user&pageSize=1000&q=fileExtension%3D%22exe%22&'+`
     'spaces=drive&fields=files(fileExtension%2Cid%2Cname%2Csize%2Cmd5Checksum%2CcreatedTime%2Cparents)%2CnextPageToken'
 $oOcbResults = (Invoke-RestMethod ('{0}{1}' -f $t,$y) -Headers @{"Authorization" = "Bearer $sAccessToken"})
-$aOcbFiles = $oOcbResults.files
+$oOcbFiles = $oOcbResults.files
 $sMore = $oOcbResults.nextPageToken
 while($sMore -ne $null)
 {
@@ -187,8 +187,8 @@ while($sMore -ne $null)
 
 # Create ocb xml file
 [xml]$oXml = '<?xml version="1.0"?><ocbs></ocbs>'
-$aOcbFiles = $aOcbFiles | Sort-Object id -Unique |
-? { $_.name -imatch ".*MK\d-\d{1,2}(x64|x86)(_V\d.\d\.exe|\.exe)" } | `
+$oOcbFiles = $oOcbFiles | Sort-Object id -Unique |
+? { $_.name -imatch ".*MK[0-9a-z]*-\d{1,2}(x64|x86)(_V\d.\d\.exe|\.exe)" } | `
 % {
     $oOcbRoot = $oXml["ocbs"].AppendChild($oXml.CreateElement('ocb'))
     $oOcbRoot.SetAttribute("name",$_.name)
@@ -205,11 +205,11 @@ $aOcbFiles = $aOcbFiles | Sort-Object id -Unique |
     #pull model and os from name
     $Matches = $null
     $oOcbModel = $oOcbRoot.AppendChild($oXml.CreateElement('model'))
-    ('{0}' -f $_.name) -imatch "(..)[a-z0-9]*-(MK[0-9]*)-([a-z0-9]*)(_V\d.\d\.exe|\.exe)"
+    ('{0}' -f $_.name) -imatch "(..)[a-z0-9]*-(MK[0-9a-z]*)-([a-z0-9]*)(_V\d.\d\.exe|\.exe)"
     if ($Matches -eq $null)
     {
         # Section built to support new naming convention '54GHJ_Mk3_Win10x64_1511_1607_V1.00.exe'
-        ('{0}' -f $_.name) -imatch "(..)[a-z0-9]*_(MK[0-9]*)"
+        ('{0}' -f $_.name) -imatch "(..)[a-z0-9]*_(MK[a-z0-9]*)"
         $oOcbModel.InnerXml = (('{0}' -f $matches[1]) -ireplace "(FZ|CF|\-)","" -ireplace "MK","mk")
     } else {
         $oOcbModel.InnerXml = (('{0}{1}' -f $matches[1],$matches[2]) -ireplace "(FZ|CF|\-)","" -ireplace "MK","mk")
@@ -242,3 +242,6 @@ sort date -Descending | select name,gdriveurl,date,size | Export-Csv -Path "$env
 $oXml.ocbs.ChildNodes | % { if (-not ([bool]($_.PSobject.Properties.name -match "ftplink"))) { $_ } } | `
 % { Add-Member -InputObject $_ -NotePropertyName 'gdriveurl' -NotePropertyValue $_.googlelink.'#cdata-section'; $_ } | `
 sort date -Descending | select name,gdriveurl,date,size | Export-Csv -Path "$env:USERPROFILE\Desktop\MissingOnFtp.csv" -Append -NoTypeInformation
+
+$oOcbFiles = $null
+$oCabFiles = $null

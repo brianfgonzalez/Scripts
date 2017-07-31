@@ -1,0 +1,42 @@
+<job id="InstallHandtevy">
+   <script language="VBScript" src="../../Scripts/ZTIUtility.vbs"/>
+   <script language="VBScript">
+' // ***************************************************************************
+' // 
+' // Copyright (c) Microsoft Corporation.  All rights reserved.
+' // 
+' // Microsoft Deployment Toolkit Solution Accelerator
+' //
+' // File:      InstallHandtevy.wsf
+' // 
+' // Version:   6.3.8443.1000
+' // 
+' // Purpose:   Use Dism to force apply start screen layout.
+' // 
+' // Usage:     cscript InstallHandtevy.wsf [/debug:true] [/UDI]
+' // 
+' // ***************************************************************************
+Option Explicit
+RunNewInstance
+'//----------------------------------------------------------------------------
+'//  Main Class
+'//----------------------------------------------------------------------------
+Class InstallHandtevy
+  '//----------------------------------------------------------------------------
+  '//  Main routine
+  '//----------------------------------------------------------------------------
+  Function Main
+    '//----------------------------------------------------------------------------
+    '//  Declare variables
+    '//----------------------------------------------------------------------------
+    Dim iRetVal
+    iRetVal = Success
+    oLogging.CreateEntry "Install Handtevy", LogTypeInfo
+	iRetVal = oUtility.RunWithHeartbeat("DISM.EXE /online /Add-ProvisionedAppxPackage /PackagePath:""" & oUtility.ScriptDir & "\eHandtevy.Handtevy_2017.518.2131.0_neutral_-_qmp3j15a87pnt.AppxBundle"" " &_
+		"/DependencyPackagePath:""" & oUtility.ScriptDir & "\Dependencies\x86\Microsoft.VCLibs.120.00_12.0.21005.1_x86__8wekyb3d8bbwe.Appx"" " &_
+		"/DependencyPackagePath:""" & oUtility.ScriptDir & "\Dependencies\x64\Microsoft.VCLibs.120.00_12.0.21005.1_x64__8wekyb3d8bbwe.Appx"" " &_
+		"/DependencyPackagePath:""" & oUtility.ScriptDir & "\Dependencies\Microsoft.WinJS.2.0_1.0.9600.17018_neutral__8wekyb3d8bbwe.Appx""  /SkipLicense")
+  End Function
+End Class
+    </script>
+</job>
