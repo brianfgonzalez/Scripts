@@ -122,8 +122,9 @@ while($sMore -ne $null)
 
 # Create cabs xml file
 [xml]$oXml = '<?xml version="1.0"?><cabs></cabs>'
-$oCabFiles | Sort-Object id -Unique | ? { $_.name -imatch "\d{1,2}(x64|x86)_.*\.cab" } | `
+$oCabFiles | Sort-Object id -Unique | ? { $_.name -imatch "\d{1,2}.*MK.*\.cab" } | `
 % {
+    Write-Host "Processing ----------------$($_.name)----------------"
     $oCabRoot = $oXml["cabs"].AppendChild($oXml.CreateElement('cab'))
     $oCabRoot.SetAttribute("name",$_.name)
 
@@ -187,8 +188,8 @@ while($sMore -ne $null)
 
 # Create ocb xml file
 [xml]$oXml = '<?xml version="1.0"?><ocbs></ocbs>'
-$oOcbFiles = $oOcbFiles | Sort-Object id -Unique |
-? { $_.name -imatch ".*MK[0-9a-z]*-\d{1,2}(x64|x86)(_V\d.\d\.exe|\.exe)" } | `
+$oOcbFiles | Sort-Object id -Unique | `
+? { $_.name -imatch '\d{1,2}.*MK.*\.exe' } | `
 % {
     $oOcbRoot = $oXml["ocbs"].AppendChild($oXml.CreateElement('ocb'))
     $oOcbRoot.SetAttribute("name",$_.name)
@@ -205,11 +206,11 @@ $oOcbFiles = $oOcbFiles | Sort-Object id -Unique |
     #pull model and os from name
     $Matches = $null
     $oOcbModel = $oOcbRoot.AppendChild($oXml.CreateElement('model'))
-    ('{0}' -f $_.name) -imatch "(..)[a-z0-9]*-(MK[0-9a-z]*)-([a-z0-9]*)(_V\d.\d\.exe|\.exe)"
+    ('{0}' -f $_.name) -imatch "(..)[a-z0-9]*-(MK[0-9a-z]*)-([a-z0-9]*).*\.exe"
     if ($Matches -eq $null)
     {
         # Section built to support new naming convention '54GHJ_Mk3_Win10x64_1511_1607_V1.00.exe'
-        ('{0}' -f $_.name) -imatch "(..)[a-z0-9]*_(MK[a-z0-9]*)"
+        ('{0}' -f $_.name) -imatch "(..)[a-z0-9]*_(MK[a-z0-9]*)_([a-z0-9]*)"
         $oOcbModel.InnerXml = (('{0}' -f $matches[1]) -ireplace "(FZ|CF|\-)","" -ireplace "MK","mk")
     } else {
         $oOcbModel.InnerXml = (('{0}{1}' -f $matches[1],$matches[2]) -ireplace "(FZ|CF|\-)","" -ireplace "MK","mk")
