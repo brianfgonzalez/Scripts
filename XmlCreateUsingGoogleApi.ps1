@@ -206,18 +206,21 @@ $oOcbFiles | Sort-Object id -Unique | `
     #pull model and os from name
     $Matches = $null
     $oOcbModel = $oOcbRoot.AppendChild($oXml.CreateElement('model'))
-    ('{0}' -f $_.name) -imatch "(..)[a-z0-9]*-(MK[0-9a-z]*)-([a-z0-9]*).*\.exe"
-    if ($Matches -eq $null)
+    if ($($_.name) -imatch "(..)[a-z0-9]*-(MK[0-9a-z\.]*)-([a-z0-9]*).*\.exe")
     {
-        # Section built to support new naming convention '54GHJ_Mk3_Win10x64_1511_1607_V1.00.exe'
-        ('{0}' -f $_.name) -imatch "(..)[a-z0-9]*_(MK[a-z0-9]*)_([a-z0-9]*)"
+        # > 2017 naming convention standard processing
+        $oOcbModel.InnerXml = (('{0}{1}' -f $matches[1],$matches[2]) -ireplace "(FZ|CF|\-)","" -ireplace "MK","mk")
+    } elseif ($($_.name) -imatch "(..)([a-z0-9]*)-([a-z0-9]*).*\.exe") {
+        # Section built to support when no MK level is included 'MX4E-7X64-MK1.exe'
         $oOcbModel.InnerXml = (('{0}' -f $matches[1]) -ireplace "(FZ|CF|\-)","" -ireplace "MK","mk")
     } else {
-        $oOcbModel.InnerXml = (('{0}{1}' -f $matches[1],$matches[2]) -ireplace "(FZ|CF|\-)","" -ireplace "MK","mk")
+        # Section built to support new naming convention '54GHJ_Mk3_Win10x64_1511_1607_V1.00.exe'
+        ('{0}' -f $_.name) -imatch "(..)[a-z0-9]*_(MK[a-z0-9\.]*)_([a-z0-9]*)"
+        $oOcbModel.InnerXml = (('{0}' -f $matches[1]) -ireplace "(FZ|CF|\-)","" -ireplace "MK","mk")
     }
 
     $oOcbOs = $oOcbRoot.AppendChild($oXml.CreateElement('os'))
-    $oOcbOs.InnerXml = ( ('{0}' -f $matches[3]) -ireplace 'X','x' -ireplace '\.','' )
+    $oOcbOs.InnerXml = ( ('{0}' -f $matches[3]) -ireplace 'X','x' -ireplace '\.','' ).ToUpper()
 
     $oOcbOs = $oOcbRoot.AppendChild($oXml.CreateElement('md5'))
     $oOcbOs.InnerXml = $_.md5Checksum
