@@ -216,7 +216,7 @@ $oOcbFiles | Sort-Object id -Unique | `
     } else {
         # Section built to support new naming convention '54GHJ_Mk3_Win10x64_1511_1607_V1.00.exe'
         ('{0}' -f $_.name) -imatch "(..)[a-z0-9]*_(MK[a-z0-9\.]*)_([a-z0-9]*)"
-        $oOcbModel.InnerXml = (('{0}{1}' -f $matches[1],$matches[2]) -ireplace "(FZ|CF|\-)","" -ireplace "MK","mk")
+        $oOcbModel.InnerXml = (('{0}' -f $matches[1]) -ireplace "(FZ|CF|\-)","" -ireplace "MK","mk")
     }
 
     $oOcbOs = $oOcbRoot.AppendChild($oXml.CreateElement('os'))
