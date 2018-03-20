@@ -1,0 +1,18 @@
+<migration urlid="http://www.microsoft.com/migration/1.0/migxmlext/allfiles">
+    <component type="Documents" context="System">
+        <displayName>Exclude D,E,F,G, and H drive letters</displayName>
+        <role role="Data">
+            <rules>
+  <unconditionalExclude>
+                    <objectSet>
+      <pattern type="File">d:\*[*]</pattern>
+	  <pattern type="File">e:\*[*]</pattern>
+	  <pattern type="File">f:\*[*]</pattern>
+	  <pattern type="File">g:\*[*]</pattern>
+	  <pattern type="File">h:\*[*]</pattern>
+                    </objectSet>
+  </unconditionalExclude>
+            </rules>
+        </role>
+    </component>
+</migration>

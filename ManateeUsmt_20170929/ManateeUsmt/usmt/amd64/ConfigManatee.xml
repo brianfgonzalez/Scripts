@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration>
+  <Applications/>
+  <Documents/>
+  <WindowsComponents>
+    <component displayname="WindowsSearchEngine" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/windowssearchengine/windowssearchengine/settings"/>
+    <component displayname="Microsoft-Windows-themecpl" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-themecpl/microsoft-windows-themecpl/settings"/>
+    <component displayname="Tablet PC Settings" migrate="no" ID="tablet_pc_settings">
+      <component displayname="Accessories" migrate="no" ID="tablet_pc_settings\tablet_pc_accessories">
+        <component displayname="Microsoft-Windows-TabletPC-Journal" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-tabletpc-journal/microsoft-windows-tabletpc-journal/settings"/>
+      </component>
+      <component displayname="Input Panel" migrate="no" ID="tablet_pc_settings\tablet_pc_input_panel">
+        <component displayname="Microsoft-Windows-TabletPC-InputPanel" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-tabletpc-inputpanel/microsoft-windows-tabletpc-inputpanel/settings"/>
+      </component>
+      <component displayname="General Options" migrate="no" ID="tablet_pc_settings\tablet_pc_general_options">
+        <component displayname="Microsoft-Windows-TabletPC-UIHub" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-tabletpc-uihub/microsoft-windows-tabletpc-uihub/settings"/>
+        <component displayname="Microsoft-Windows-TabletPC-Platform-Input-Core" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-tabletpc-platform-input-core/microsoft-windows-tabletpc-platform-input-core/settings"/>
+      </component>
+      <component displayname="Handwriting Recognition" migrate="no" ID="tablet_pc_settings\handwriting_recognition">
+        <component displayname="Microsoft-Windows-TabletPC-InputPersonalization" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-tabletpc-inputpersonalization/microsoft-windows-tabletpc-inputpersonalization/settings"/>
+        <component displayname="Microsoft-Windows-TabletPC-CoreInkRecognition" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-tabletpc-coreinkrecognition/microsoft-windows-tabletpc-coreinkrecognition/settings"/>
+      </component>
+    </component>
+    <component displayname="Microsoft-Windows-sysdm" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-sysdm/microsoft-windows-sysdm/settings"/>
+    <component displayname="accessories" migrate="no" ID="accessories">
+      <component displayname="accessories\sticky notes" migrate="no" ID="accessories\sticky notes">
+        <component displayname="Microsoft-Windows-StickyNotes-App" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-stickynotes-app/microsoft-windows-stickynotes-app/settings"/>
+      </component>
+    </component>
+    <component displayname="Sound and Speech Recognition" migrate="no" ID="sound_and_speech_recognition">
+      <component displayname="Speech Recognition" migrate="no" ID="sound_and_speech_recognition\speech_recognition">
+        <component displayname="Microsoft-Windows-SpeechCommon" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-speechcommon/microsoft-windows-speechcommon/settings"/>
+      </component>
+    </component>
+    <component displayname="snippingtool_settings" migrate="no" ID="snippingtool_settings">
+      <component displayname="Microsoft-Windows-SnippingTool-App" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-snippingtool-app/microsoft-windows-snippingtool-app/settings"/>
+    </component>
+    <component displayname="Microsoft-Windows-Shell-Sounds" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-shell-sounds/microsoft-windows-shell-sounds/settings"/>
+    <component displayname="Microsoft-Windows-SystemMaintenanceService" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-systemmaintenanceservice/microsoft-windows-systemmaintenanceservice/settings"/>
+    <component displayname="Microsoft-Windows-ScriptedDiagnosticsClient-Scheduled" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-scripteddiagnosticsclient-scheduled/microsoft-windows-scripteddiagnosticsclient-scheduled/settings"/>
+    <component displayname="Microsoft-Windows-RasmanService" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-rasmanservice/microsoft-windows-rasmanservice/settings"/>
+    <component displayname="Microsoft-Windows-PeerDist-Client-Migration" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-peerdist-client-migration/microsoft-windows-peerdist-client-migration/settings"/>
+    <component displayname="Hardware" migrate="no" ID="hardware">
+      <component displayname="Phone and Modem" migrate="no" ID="hardware\phone_and_modem">
+        <component displayname="Microsoft-Windows-TapiSetup" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-tapisetup/microsoft-windows-tapisetup/settings"/>
+      </component>
+      <component displayname="Printers and Faxes" migrate="no" ID="hardware\printers_and_faxes">
+        <component displayname="Microsoft-Windows-Printing-Spooler-Core" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-printing-spooler-core/microsoft-windows-printing-spooler-core/settings"/>
+        <component displayname="Microsoft-Windows-Printing-LocalPrinting" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-printing-localprinting/microsoft-windows-printing-localprinting/settings"/>
+        <component displayname="Microsoft-Windows-Printing-Spooler-Networkclient" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-printing-spooler-networkclient/microsoft-windows-printing-spooler-networkclient/settings"/>
+        <component displayname="Microsoft-Windows-Printing-Spooler-Core-Localspl" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-printing-spooler-core-localspl/microsoft-windows-printing-spooler-core-localspl/settings"/>
+      </component>
+    </component>
+    <component displayname="Microsoft-Windows-mmsys" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-mmsys/microsoft-windows-mmsys/settings"/>
+    <component displayname="Programs" migrate="no" ID="programs">
+      <component displayname="programs\media_center_settings" migrate="no" ID="programs\media_center_settings">
+        <component displayname="Microsoft-Windows-Video-TVVideoControl" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-video-tvvideocontrol/microsoft-windows-video-tvvideocontrol/settings"/>
+      </component>
+      <component displayname="Media Player Settings" migrate="no" ID="programs\media_player_settings">
+        <component displayname="Microsoft-Windows-MediaPlayer-Migration" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-mediaplayer-migration/microsoft-windows-mediaplayer-migration/settings"/>
+      </component>
+    </component>
+    <component displayname="Microsoft-Windows-Migration-DisplayGroups" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-migration-displaygroups/microsoft-windows-migration-displaygroups/settings"/>
+    <component displayname="Microsoft-Windows-International-TimeZones" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-international-timezones/microsoft-windows-international-timezones/settings"/>
+    <component displayname="Microsoft-Windows-fontext" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-fontext/microsoft-windows-fontext/settings"/>
+    <component displayname="Communications and Sync" migrate="no" ID="communications_and_sync">
+      <component displayname="Windows Mail" migrate="no" ID="communications_and_sync\windows_mail">
+        <component displayname="Microsoft-Windows-WAB" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-wab/microsoft-windows-wab/settings"/>
+        <component displayname="Microsoft-Windows-Mail" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-mail/microsoft-windows-mail/settings"/>
+      </component>
+      <component displayname="Fax" migrate="no" ID="communications_and_sync\fax">
+        <component displayname="Microsoft-Windows-Fax-Status-Monitor" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-fax-status-monitor/microsoft-windows-fax-status-monitor/settings"/>
+        <component displayname="Microsoft-Windows-Fax-Service" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-fax-service/microsoft-windows-fax-service/settings"/>
+        <component displayname="Microsoft-Windows-Fax-Client-Applications" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-fax-client-applications/microsoft-windows-fax-client-applications/settings"/>
+      </component>
+    </component>
+    <component displayname="Microsoft-Windows-eudcedit" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-eudcedit/microsoft-windows-eudcedit/settings"/>
+    <component displayname="Performance and Maintenance" migrate="no" ID="performance_and_maintenance">
+      <component displayname="Diagnostics" migrate="no" ID="performance_and_maintenance\diagnostics">
+        <component displayname="Microsoft-Windows-RemoteAssistance-Exe" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-remoteassistance-exe/microsoft-windows-remoteassistance-exe/settings"/>
+        <component displayname="Microsoft-Windows-Feedback-Service" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-feedback-service/microsoft-windows-feedback-service/settings"/>
+      </component>
+      <component displayname="Error Reporting" migrate="no" ID="performance_and_maintenance\error_reporting">
+        <component displayname="Microsoft-Windows-ErrorReportingCore" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-errorreportingcore/microsoft-windows-errorreportingcore/settings"/>
+      </component>
+    </component>
+    <component displayname="Microsoft-Windows-Extensible-Authentication-Protocol-Host-Service" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-extensible-authentication-protocol-host-service/microsoft-windows-extensible-authentication-protocol-host-service/settings"/>
+    <component displayname="Network and Internet" migrate="no" ID="network_and_internet">
+      <component displayname="Offline Files" migrate="no" ID="network_and_internet\offline_files">
+        <component displayname="Microsoft-Windows-OfflineFiles-Core" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-offlinefiles-core/microsoft-windows-offlinefiles-core/settings"/>
+      </component>
+      <component displayname="Internet Options" migrate="no" ID="network_and_internet\internet_options">
+        <component displayname="Microsoft-Windows-ieframe" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-ieframe/microsoft-windows-ieframe/settings"/>
+        <component displayname="Microsoft-Windows-IE-InternetExplorer" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-ie-internetexplorer/microsoft-windows-ie-internetexplorer/settings"/>
+        <component displayname="Microsoft-Windows-IE-Feeds-Platform" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-ie-feeds-platform/microsoft-windows-ie-feeds-platform/settings"/>
+      </component>
+      <component displayname="Networking Connections" migrate="no" ID="network_and_internet\networking_connections">
+        <component displayname="Microsoft-Windows-Wlansvc" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-wlansvc/microsoft-windows-wlansvc/settings"/>
+        <component displayname="Microsoft-Windows-VWiFi" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-vwifi/microsoft-windows-vwifi/settings"/>
+        <component displayname="Microsoft-Windows-RasConnectionManager" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-rasconnectionmanager/microsoft-windows-rasconnectionmanager/settings"/>
+        <component displayname="Microsoft-Windows-RasApi" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-rasapi/microsoft-windows-rasapi/settings"/>
+        <component displayname="Microsoft-Windows-PeerToPeerCollab" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-peertopeercollab/microsoft-windows-peertopeercollab/settings"/>
+        <component displayname="Microsoft-Windows-Native-80211" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-native-80211/microsoft-windows-native-80211/settings"/>
+        <component displayname="Microsoft-Windows-MPR" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-mpr/microsoft-windows-mpr/settings"/>
+        <component displayname="Microsoft-Windows-Dot3svc" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-dot3svc/microsoft-windows-dot3svc/settings"/>
+      </component>
+    </component>
+    <component displayname="Microsoft-Windows-DisplayConfigSettings" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-displayconfigsettings/microsoft-windows-displayconfigsettings/settings"/>
+    <component displayname="Microsoft-Windows-DiagCpl" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-diagcpl/microsoft-windows-diagcpl/settings"/>
+    <component displayname="Date, Time, Language and Region" migrate="no" ID="date_time_language_and_region">
+      <component displayname="Regional Language Options" migrate="no" ID="date_time_language_and_region\regional_language_options">
+        <component displayname="Microsoft-Windows-TableDrivenTextService-Migration" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-tabledriventextservice-migration/microsoft-windows-tabledriventextservice-migration/settings"/>
+        <component displayname="Microsoft-Windows-TextServicesFramework-Migration" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-textservicesframework-migration/microsoft-windows-textservicesframework-migration/settings"/>
+        <component displayname="Microsoft-Windows-MUI-Settings" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-mui-settings/microsoft-windows-mui-settings/settings"/>
+        <component displayname="Microsoft-Windows-International-Core" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-international-core/microsoft-windows-international-core/settings"/>
+        <component displayname="Microsoft-Windows-IME-Traditional-Chinese-Core" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-ime-traditional-chinese-core/microsoft-windows-ime-traditional-chinese-core/settings"/>
+        <component displayname="Microsoft-Windows-IME-Simplified-Chinese-Core" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-ime-simplified-chinese-core/microsoft-windows-ime-simplified-chinese-core/settings"/>
+        <component displayname="Microsoft-Windows-Desktop_Technologies-Text_Input_Services-IME-Japanese-Core" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-desktop_technologies-text_input_services-ime-japanese-core/microsoft-windows-desktop_technologies-text_input_services-ime-japanese-core/settings"/>
+      </component>
+    </component>
+    <component displayname="Microsoft-Windows-DesktopWindowManager-Core" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-desktopwindowmanager-core/microsoft-windows-desktopwindowmanager-core/settings"/>
+    <component displayname="Security" migrate="no" ID="security">
+      <component displayname="Microsoft-Windows-Rights-Management-Client-v1-API" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-rights-management-client-v1-api/microsoft-windows-rights-management-client-v1-api/settings"/>
+      <component displayname="Security Options" migrate="no" ID="security\security_options">
+        <component displayname="Microsoft-Windows-Security-Vault" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-security-vault/microsoft-windows-security-vault/settings"/>
+        <component displayname="Microsoft-Windows-Credential-Manager" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-credential-manager/microsoft-windows-credential-manager/settings"/>
+      </component>
+    </component>
+    <component displayname="Appearance and Display" migrate="no" ID="appearance_and_display">
+      <component displayname="Windows Games Settings" migrate="no" ID="appearance_and_display\windows_games_settings">
+        <component displayname="Microsoft-Windows-GameExplorer" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-gameexplorer/microsoft-windows-gameexplorer/settings"/>
+      </component>
+      <component displayname="Taskbar and Start Menu" migrate="no" ID="appearance_and_display\taskbar_and_start_menu">
+        <component displayname="Microsoft-Windows-stobject" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-stobject/microsoft-windows-stobject/settings"/>
+        <component displayname="Microsoft-Windows-explorer" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-explorer/microsoft-windows-explorer/settings"/>
+      </component>
+      <component displayname="Personalized Settings" migrate="no" ID="appearance_and_display\personalized_settings">
+        <component displayname="Microsoft-Windows-uxtheme" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-uxtheme/microsoft-windows-uxtheme/settings"/>
+        <component displayname="Microsoft-Windows-themeui" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-themeui/microsoft-windows-themeui/settings"/>
+        <component displayname="Microsoft-Windows-shmig" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-shmig/microsoft-windows-shmig/settings"/>
+        <component displayname="Microsoft-Windows-shell32" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-shell32/microsoft-windows-shell32/settings"/>
+        <component displayname="Microsoft-Windows-CommandPrompt" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-commandprompt/microsoft-windows-commandprompt/settings"/>
+      </component>
+    </component>
+    <component displayname="Additional Options" migrate="no" ID="additional_options">
+      <component displayname="Help Settings" migrate="no" ID="additional_options\help_settings">
+        <component displayname="Microsoft-Windows-Help-Client" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-help-client/microsoft-windows-help-client/settings"/>
+      </component>
+      <component displayname="Windows Core Settings" migrate="no" ID="additional_options\windows_core_settings">
+        <component displayname="Microsoft-Windows-Win32k-Settings" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-win32k-settings/microsoft-windows-win32k-settings/settings"/>
+        <component displayname="Microsoft-Windows-Web-Services-for-Management-Core" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-web-services-for-management-core/microsoft-windows-web-services-for-management-core/settings"/>
+        <component displayname="Microsoft-Windows-UPnPSSDP" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-upnpssdp/microsoft-windows-upnpssdp/settings"/>
+        <component displayname="Microsoft-Windows-UPnPDeviceHost" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-upnpdevicehost/microsoft-windows-upnpdevicehost/settings"/>
+        <component displayname="Microsoft-Windows-UPnPControlPoint" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-upnpcontrolpoint/microsoft-windows-upnpcontrolpoint/settings"/>
+        <component displayname="Microsoft-Windows-TerminalServices-RemoteConnectionManager" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-terminalservices-remoteconnectionmanager/microsoft-windows-terminalservices-remoteconnectionmanager/settings"/>
+        <component displayname="Microsoft-Windows-TerminalServices-Drivers" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-terminalservices-drivers/microsoft-windows-terminalservices-drivers/settings"/>
+        <component displayname="Microsoft-Windows-SQMApi" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-sqmapi/microsoft-windows-sqmapi/settings"/>
+        <component displayname="Microsoft-Windows-SQM-Consolidator-Base" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-sqm-consolidator-base/microsoft-windows-sqm-consolidator-base/settings"/>
+        <component displayname="Microsoft-Windows-RPC-Remote" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-rpc-remote/microsoft-windows-rpc-remote/settings"/>
+        <component displayname="Microsoft-Windows-RPC-Local" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-rpc-local/microsoft-windows-rpc-local/settings"/>
+        <component displayname="Microsoft-Windows-RPC-HTTP" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-rpc-http/microsoft-windows-rpc-http/settings"/>
+        <component displayname="Microsoft-Windows-Rasppp" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-rasppp/microsoft-windows-rasppp/settings"/>
+        <component displayname="Microsoft-Windows-RasMprDdm" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-rasmprddm/microsoft-windows-rasmprddm/settings"/>
+        <component displayname="Microsoft-Windows-RasBase" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-rasbase/microsoft-windows-rasbase/settings"/>
+        <component displayname="Microsoft-Windows-Microsoft-Data-Access-Components-(MDAC)-ODBC-DriverManager-Dll" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-microsoft-data-access-components-(mdac)-odbc-drivermanager-dll/microsoft-windows-microsoft-data-access-components-(mdac)-odbc-drivermanager-dll/settings"/>
+        <component displayname="Microsoft-Windows-ICM-Profiles" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-icm-profiles/microsoft-windows-icm-profiles/settings"/>
+        <component displayname="Microsoft-Windows-feclient" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-feclient/microsoft-windows-feclient/settings"/>
+        <component displayname="Microsoft-Windows-dpapi-keys" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-dpapi-keys/microsoft-windows-dpapi-keys/settings"/>
+        <component displayname="Microsoft-Windows-Crypto-keys" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-crypto-keys/microsoft-windows-crypto-keys/settings"/>
+        <component displayname="Microsoft-Windows-COM-DTC-Setup" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-com-dtc-setup/microsoft-windows-com-dtc-setup/settings"/>
+        <component displayname="Microsoft-Windows-COM-ComPlus-Setup" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-com-complus-setup/microsoft-windows-com-complus-setup/settings"/>
+        <component displayname="Microsoft-Windows-COM-Base" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-com-base/microsoft-windows-com-base/settings"/>
+        <component displayname="Microsoft-Windows-CAPI2-certs" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-capi2-certs/microsoft-windows-capi2-certs/settings"/>
+      </component>
+    </component>
+    <component displayname="Microsoft-Windows-Client-SQM-Consolidator" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-client-sqm-consolidator/microsoft-windows-client-sqm-consolidator/settings"/>
+    <component displayname="Microsoft-Windows-Audio-VolumeControl" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-audio-volumecontrol/microsoft-windows-audio-volumecontrol/settings"/>
+    <component displayname="Accessibility" migrate="no" ID="accessibility">
+      <component displayname="Accessibility Settings" migrate="no" ID="accessibility\accessibility_settings">
+        <component displayname="Microsoft-Windows-accessibilitycpl" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-accessibilitycpl/microsoft-windows-accessibilitycpl/settings"/>
+      </component>
+    </component>
+    <component displayname="Microsoft-Windows-Application-Experience-Program-Data" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-application-experience-program-data/microsoft-windows-application-experience-program-data/settings"/>
+    <component displayname="Microsoft-Windows-Application-Experience-Application-Telemetry-Agent" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-application-experience-application-telemetry-agent/microsoft-windows-application-experience-application-telemetry-agent/settings"/>
+    <component displayname="Microsoft-Windows-Application-Experience-Program-Compatibility-Assistant" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-application-experience-program-compatibility-assistant/microsoft-windows-application-experience-program-compatibility-assistant/settings"/>
+  </WindowsComponents>
+  <Policies>
+    <ErrorControl>
+      <!--   Example:
+
+          <fileError>
+            <nonFatal errorCode="33">* [*]</nonFatal>
+            <fatal errorCode="any">C:\Users\* [*]</fatal>
+          </fileError>
+          <registryError>
+            <nonFatal errorCode="5">* [*]</nonFatal>
+          </registryError>
+      -->
+    </ErrorControl>
+    <HardLinkStoreControl>
+      <!--   Example:
+
+          <fileLocked>
+            <createHardLink>c:\Users\* [*]</createHardLink>
+            <errorHardLink>C:\* [*]</errorHardLink>
+          </fileLocked>
+      -->
+    </HardLinkStoreControl>
+  </Policies>
+  <ProfileControl>
+    <!--   Example (local group mapping):
+
+          <localGroups>
+            <mappings>
+              <changeGroup from="Administrators" to="Users" appliesTo="MigratedUsers">
+                <include>
+                  <pattern>DomainName1\Username</pattern>
+                </include>
+                <exclude>
+                  <pattern>DomainName2\Username</pattern>
+                </exclude>
+              </changeGroup>
+            </mappings>
+          </localGroups>
+          
+      -->
+    <!--   Example (domain and user mapping):
+
+          <domains>
+            <domain from="Domain1" to="Domain2"/>
+          </domains>
+          
+          <users>
+            <user from="Domain1\User1" to="Domain2\User2"/>
+          </users>
+          
+      -->
+  </ProfileControl>
+</Configuration>

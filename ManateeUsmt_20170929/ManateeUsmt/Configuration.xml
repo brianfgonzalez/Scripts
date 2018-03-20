@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<usmttool>
+  <!-- files element accepts relative paths -->
+  <files>usmt\amd64</files>
+  <shares>
+	<share gateway="10.208.6.254" default="true">\\ops-sccm-dp02\usmt_data$</share>
+	<share gateway="192.168.10.1">\\cm01.corp.viamonstra.com\usmt</share>
+	<share gateway="192.168.20.1">\\cm02.corp.viamonstra.com\usmt</share>
+	<share gateway="192.168.30.1">\\cm03.corp.viamonstra.com\usmt</share>
+	<share gateway="192.168.40.1">\\cm04.corp.viamonstra.com\usmt</share>
+  </shares>
+  <arguments>
+    <scanstate><![CDATA[/config:ConfigManatee.xml /i:MigUser.xml /i:MigManatee.xml /i:ExcludeAddtFolders.xml /i:ExcludeDEFGHDrives.xml /localonly /uel:35 /o /c /v:13]]></scanstate>
+	<loadstate><![CDATA[/i:MigUser.xml /uel:35 /c /v:13]]></loadstate>
+  </arguments>
+  <logs>
+	<scanstate>C:\Windows\CCM\Logs\scanstate.log</scanstate>
+	<loadstate>C:\Windows\CCM\Logs\loadstate.log</loadstate>
+  </logs>
+</usmttool>

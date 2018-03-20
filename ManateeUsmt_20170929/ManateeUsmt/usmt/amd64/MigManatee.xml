@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<migration urlid="http://www.microsoft.com/migration/1.0/migxmlext/ManateeCaptureUSMT">
+  <component type="Documents" context="System">
+    <displayName>Manatee Intergraph</displayName>
+    <role role="Data">
+	<rules>
+		<include filter='MigXmlHelper.IgnoreIrrelevantLinks()'>
+			<objectSet>
+				<pattern type="File">C:\Program Files (x86)\INTERGRAPH\IFR\Urs\MCSO\*[*]</pattern>
+				<pattern type="File">C:\Program Files\INTERGRAPH\IFR\Urs\MCSO\*[*]</pattern>
+				<pattern type="File">C:\ProgramData\INTERGRAPH\IFR\Urs\MCSO\*[*]</pattern>
+			</objectSet>
+		</include>
+	</rules>
+	</role>
+  </component>
+
+  <component type="Documents" context="System">
+    <displayName>Manatee EAgent Properties</displayName>
+    <role role="Data">
+	<rules>
+		<include filter='MigXmlHelper.IgnoreIrrelevantLinks()'>
+			<objectSet>
+				<pattern type="File">C:\ProgramData\eAgent\[eagent.properties]</pattern>
+			</objectSet>
+		</include>
+	</rules>
+	</role>
+  </component>
+</migration>

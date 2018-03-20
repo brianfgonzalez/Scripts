@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration>
+  <Applications/>
+  <Documents/>
+  <WindowsComponents>
+    <component displayname="Microsoft-Windows-DeliveryOptimization" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/microsoft-windows-deliveryoptimization/microsoft-windows-deliveryoptimization/settings"/>
+    <component displayname="Security-Malware-Windows-Defender" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/security-malware-windows-defender/security-malware-windows-defender/settings"/>
+    <component displayname="Windows-Defender-AM-Engine" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/windows-defender-am-engine/windows-defender-am-engine/settings"/>
+    <component displayname="Windows-Defender-AM-Sigs" migrate="no" ID="http://www.microsoft.com/migration/1.0/migxmlext/cmi/windows-defender-am-sigs/windows-defender-am-sigs/settings"/>
+  </WindowsComponents>
+  <Policies>
+    <ErrorControl>
+      <!--   Example:
+      <fileError>
+        <nonFatal errorCode="33">*[*]</nonFatal>
+        <fatal errorCode="any">C:\Users\*[*]</fatal>
+      </fileError>
+      <registryError>
+        <nonFatal errorCode="5">*[*]</nonFatal>
+      </registryError>
+      -->
+    </ErrorControl>
+  </Policies>
+</Configuration>

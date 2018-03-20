@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<migration urlid="http://www.microsoft.com/migration/1.0/migxmlext/ExcludeAddtFolders">
+    <component type="Documents" context="System">
+        <displayName>Exclude additional folders</displayName>
+        <role role="Data">
+            <rules>
+  <unconditionalExclude>
+                    <objectSet>
+					  <pattern type="File">C:\Program Files (x86)\Microsoft Office\*[*]</pattern>
+					  <pattern type="File">C:\Program Files (x86)\Microsoft SDKs\*[*]</pattern>
+					  <pattern type="File">C:\Program Files (x86)\Panasonic\*[*]</pattern>
+					  <pattern type="File">C:\Program Files (x86)\VideoLAN\*[*]</pattern>
+					  <pattern type="File">C:\Program Files (x86)\Win7codecs\*[*]</pattern>
+					  <pattern type="File">C:\Program Files (x86)\Windows Kits\Win7codecs\*[*]</pattern>
+					  <pattern type="File">C:\ProgramData\chocolatey\*[*]</pattern>
+					  <pattern type="File">C:\ProgramData\IsolatedStorage\*[*]</pattern>
+					  <pattern type="File">C:\ProgramData\Microsoft Help\*[*]</pattern>
+					  <pattern type="File">C:\Temp\*[*]</pattern>
+					  <pattern type="File">C:\Tools\*[*]</pattern>
+					  <pattern type="File">C:\Users\Public\*[*]</pattern>
+                    </objectSet>
+  </unconditionalExclude>
+            </rules>
+        </role>
+    </component>
+</migration>

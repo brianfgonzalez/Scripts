@@ -1,0 +1,63 @@
+﻿<?xml version='1.0' encoding='utf-8' standalone='yes'?>
+<assembly
+    xmlns="urn:schemas-microsoft-com:asm.v3"
+    xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    manifestVersion="1.0"
+    >
+  <assemblyIdentity
+      language="neutral"
+      name="Microsoft-Windows-Printing-LocalPrinting"
+      processorArchitecture="*"
+      version="0.0.0.0"
+      versionScope="nonSxS"
+      />
+  <migration
+      replacementSettingsVersionRange="0"
+      scope="Upgrade,MigWiz,USMT"
+      settingsVersion="0"
+      >
+    <machineSpecific>
+      <migXml xmlns="">
+        <plugin
+            classId="{46E3C8DF-09F6-40EF-8F19-C0DB6FF9100F}"
+            file="Printing-LocalPrinting-Replacement\PrintMig.dll"
+            />
+        <rules context="System">
+          <include>
+            <objectSet>
+              <pattern type="Registry">HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Ports [*]</pattern>
+            </objectSet>
+          </include>
+          <merge script="MigXmlHelper.DestinationPriority()">
+            <objectSet>
+              <pattern type="Registry">HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Ports [*]</pattern>
+            </objectSet>
+          </merge>
+        </rules>
+        <rules context="User">
+          <include>
+            <objectSet>
+              <pattern type="Registry">HKCU\Software\Microsoft\Windows NT\CurrentVersion\Windows [LegacyDefaultPrinterMode]</pattern>
+              <pattern type="Registry">HKCU\Software\Microsoft\Windows NT\CurrentVersion\Windows [IsMRUEstablished]</pattern>
+              <pattern type="Registry">HKCU\Software\Microsoft\Windows NT\CurrentVersion\Windows [Device]</pattern>
+            </objectSet>
+          </include>
+        </rules>
+      </migXml>
+    </machineSpecific>
+    <migXml xmlns="">
+      <plugin
+          classId="{8A901309-89F7-4344-90C1-C0429228B8FB}"
+          file="Printing-LocalPrinting-Replacement\QueueMig.dll"
+          />
+      <rules context="System">
+        <include>
+          <objectSet>
+            <pattern type="Registry">HKLM\SYSTEM\CurrentControlSet\Control\Print\QueueMigration [*]</pattern>
+          </objectSet>
+        </include>
+      </rules>
+    </migXml>
+  </migration>
+</assembly>
