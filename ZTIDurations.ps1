@@ -16,7 +16,7 @@ If (Test-Path ('{0}\Durations.json' -f $oTSEnv.Value("LogPath")))
 }
 
 $iOffset = "{0:zz}" -f (get-date)
-$sLogFile = $oTSEnv.Value("LogPath") + "\LTIDuration.log"
+$sLogFile = $oTSEnv.Value("LogPath") + "\Durations.log"
 $dtCurrentTimeUTC = (Get-Date).ToUniversalTime()
 
 If ($Initial)
