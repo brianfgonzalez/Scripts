@@ -1,0 +1,82 @@
+@echo off
+setlocal
+
+if "%~1"=="" (
+    goto USAGE
+)
+
+if "%~1"=="/?" (
+    goto USAGE
+)
+
+REM Check for admin permission
+FOR /f "usebackq" %%f IN (`whoami /priv`) DO IF "%%f"=="SeTakeOwnershipPrivilege" GOTO :IS_ADMIN
+ECHO CreateObject("Shell.Application").ShellExecute Chr(34) ^& "%WINDIR%\System32\cmd.exe" ^& Chr(34), "/K " ^& Chr(34) ^& "%~dpfx0 %*" ^& Chr(34), "", "runas", 1 >"%TEMP%\RunAs.vbs"
+WScript.exe "%TEMP%\RunAs.vbs"
+GOTO :EOF
+
+:IS_ADMIN
+set _ETLPATH=%systemdrive%\WindowsUpdateVerbose.etl
+set _TRACEREGKEY=HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Trace
+set _TRACEREGVALUE=WPPLogDisabled
+
+REM OS Version checks
+for /f "skip=1 tokens=2 delims=[]" %%G in ('ver') Do (
+  for /f "tokens=2,3,4 delims=. " %%x in ("%%G") Do (
+    set _major=%%x& set _minor=%%y& set _build=%%z 
+  )
+)
+
+IF %_major% LSS 10 (
+    echo This script is for Windows 10 or later only.
+    goto :EOF
+)
+
+:ARGLOOP
+if /I "%~1"=="/start" (
+    echo Starting verbose tracing for Windows Update Agent ...
+    goto START
+    
+) else if /I "%~1"=="/stop" (
+    echo Stopping verbose tracing ...
+    goto STOP   
+)
+
+shift
+goto ARGLOOP
+
+:START
+@echo.
+reg add %_TRACEREGKEY% /v %_TRACEREGVALUE% /d 1 /t REG_DWORD /f
+net stop usosvc
+net stop wuauserv
+logman start WindowsUpdateLOGPS1 -ets -o %_ETLPATH% -ft 00:00:05 -nb 2 24 -bs 128 -p {0b7a6f19-47c4-454e-8c5c-e868d637e4d8} 8380415 5
+
+@echo.
+echo Verbose tracing will be output to: %_ETLPATH%.
+echo Make sure to run %~nx0 /stop later.
+goto :EOF
+
+:STOP
+@echo.
+reg delete %_TRACEREGKEY% /v %_TRACEREGVALUE% /f
+net stop usosvc
+net stop wuauserv
+logman stop WindowsUpdateLOGPS1 -ets
+
+@echo.
+echo Done! Verbose ETL file is at %_ETLPATH%
+
+goto :EOF
+
+:USAGE
+@echo.
+echo %~nx0 [/start] [/stop]
+@echo.
+echo Enable verbose Windows Update Agent tracing on Windows 10.
+@echo.
+echo Options:
+echo    /start    Start verbose tracing.
+echo    /stop     Stop and flush verbose tracing.
+@echo.
+goto :EOF
