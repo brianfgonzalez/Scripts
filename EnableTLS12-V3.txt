@@ -1,0 +1,147 @@
+﻿
+
+                function AddDotNetRegistriesForTls12 
+                {
+                    param (
+                        [Parameter(Mandatory)]
+                        [string]$regPath
+                    )
+
+                    $nameAspNet = "AspNetEnforceViewStateMac"
+                    $nameStrongCrypto = "SchUseStrongCrypto"
+                    $nameDefaultTlsVer = "SystemDefaultTlsVersions"
+                   
+
+                    If(!(Test-Path $regPath))
+                    {
+                        New-Item -Path $regPath -Force | Out-Null
+                    }
+                    New-ItemProperty -Path $regPath -Name $nameAspNet -Value 1 -PropertyType DWORD -Force | Out-Null
+                    New-ItemProperty -Path $regPath -Name $nameStrongCrypto -Value 1 -PropertyType DWORD -Force | Out-Null
+                    New-ItemProperty -Path $regPath -Name $nameDefaultTlsVer -Value 1 -PropertyType DWORD -Force | Out-Null
+                }
+
+              
+
+                function AddDotNetWinhttpRegistryForTls12
+                {
+                    $dotNet20_subkey = "HKLM:\SOFTWARE\Microsoft\.NETFramework\v2.0.50727"
+                    $dotNet40_subkey = "HKLM:\SOFTWARE\Microsoft\.NETFramework\v4.0.30319"
+
+                    $wowDotNet20_subkey = "HKLM:\SOFTWARE\Wow6432Node\Microsoft\.NETFramework\v2.0.50727"
+                    $wowDotNet40_subkey = "HKLM:\SOFTWARE\Wow6432Node\Microsoft\.NETFramework\v4.0.30319"
+
+                   
+                    AddDotNetRegistriesForTls12 $dotNet20_subkey
+                    AddDotNetRegistriesForTls12 $dotNet40_subkey
+                    AddDotNetRegistriesForTls12 $wowDotNet20_subkey
+                    AddDotNetRegistriesForTls12 $wowDotNet40_subkey
+
+                    $winhttp_subkey = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\WinHttp"
+                    $wowWinhttp_subkey = "HKLM:\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Internet Settings\WinHttp"                  
+                    $nameDefaultProtocol = "DefaultSecureProtocols"
+
+                    If(!(Test-Path $winhttp_subkey))
+                    {
+                        New-Item -Path $winhttp_subkey -Force | Out-Null
+                    }
+                    New-ItemProperty -Path $winhttp_subkey -Name $nameDefaultProtocol -Value 2720 -PropertyType DWORD -Force | Out-Null
+
+                    If(!(Test-Path $wowWinhttp_subkey))
+                    {
+                        New-Item -Path $wowWinhttp_subkey -Force | Out-Null
+                    }
+                    New-ItemProperty -Path $wowWinhttp_subkey -Name $nameDefaultProtocol -Value 2720 -PropertyType DWORD -Force | Out-Null
+                }
+
+
+                ## Setting up registries for TLS 1.2
+                $tls10_subkey = "HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\tls 1.0\"
+                $tls11_subkey = "HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\tls 1.1\"
+                $tls12_subkey = "HKLM:\SYSTEM\CurrentControlSet\Control\SecurityProviders\SCHANNEL\Protocols\tls 1.2\"
+
+                
+                function SetTlsRegistries
+                {  
+                    param (
+                        [Parameter(Mandatory)]
+                        [string]$tlsRegkeyName,
+                        [bool]$tlsEnabled
+                    )
+
+                    $nameDisableByDefault = "disabledbydefault"
+                    $nameEnabled = "enabled"
+
+                    If ($tlsEnabled)
+                    {
+                        $valueDisableByDefault = 0
+                        $valueEnabled = 1
+                    }
+                    else
+                    {
+                        $valueDisableByDefault = 1
+                        $valueEnabled = 0
+                    }
+
+                    $clientRegPath = $tlsRegkeyName + "client"
+                    If(!(Test-Path $clientRegPath))
+                    {
+                        New-Item -Path $clientRegPath -Force | Out-Null
+                    }
+                    New-ItemProperty -Path $clientRegPath -Name $nameDisableByDefault -Value $valueDisableByDefault -PropertyType DWORD -Force | Out-Null
+                    New-ItemProperty -Path $clientRegPath -Name $nameEnabled -Value $valueEnabled -PropertyType DWORD -Force | Out-Null
+
+                    $serverRegPath = $tlsRegkeyName + "server"
+                    If(!(Test-Path $serverRegPath))
+                    {
+                        New-Item -Path $serverRegPath -Force | Out-Null
+                    }
+                    New-ItemProperty -Path $serverRegPath -Name $nameDisableByDefault -Value $valueDisableByDefault -PropertyType DWORD -Force | Out-Null
+                    New-ItemProperty -Path $serverRegPath -Name $nameEnabled -Value $valueEnabled -PropertyType DWORD -Force | Out-Null
+                }
+
+
+                ## always set TLS 1.2 as enabled
+                Write-Host "Setting up TLS 1.2 regkeys"
+                SetTlsRegistries -tlsRegkeyName $tls12_subkey -tlsEnabled $True
+                Write-Host "Done...Please reboot your machine"
+
+                Write-Host "Now, We will check OS version and Hotfix version required to support TLS v1.2" 
+               
+               
+                [version]$OSVersion = (Get-WmiObject Win32_OperatingSystem).Version
+                             
+                If($OSVersion -lt 6.3)
+                {                    
+                $HotfixRequired =  
+                Try{Get-Hotfix -id KB3140245 -ErrorAction Stop}
+                Catch{ Write-Warning "KB3140245 not found"}
+                  
+                    If($HotfixRequired)
+                        {
+                           Write-Host "OS Check and Hotfix version Passed...Setting up TLS 1.2 WinHTTP regkeys"
+                            AddDotNetWinhttpRegistryForTls12
+                            Write-Host "Done...Please reboot your machine"
+                        }
+                    Else
+                        { 
+                        Write-Host  "OS Check and Hotfix version Failed, This OS is legacy OS without kb3140245, Install KB3140245 and rerun the script"}
+                        }
+                Else
+                {
+               Write-Host  "This OS version does not need Winhttp keys for TLS v1.2"
+                }
+
+       Write-Host "Checking for generally Required Cipher-Suites"
+
+       $CipherSuiteRequired1 = Get-TlsCipherSuite -Name TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+       If($CipherSuiteRequired){ Write-Host "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 is Present"} Else { Write-Warning "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384 is Missing"}
+       
+       $CipherSuiteRequired2 = Get-TlsCipherSuite -Name TLS_DHE_RSA_WITH_AES_128_GCM_SHA256
+       If($CipherSuiteRequired2){Write-Host "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256 is Present"}Else{ Write-Warning "TLS_DHE_RSA_WITH_AES_128_GCM_SHA256 is Missing" }
+       
+       $CipherSuiteRequired3 = Get-TlsCipherSuite -Name TLS_DHE_RSA_WITH_AES_128_GCM_SHA2
+       If($CipherSuiteRequired3) { Write-Host "TLS_DHE_RSA_WITH_AES_128_GCM_SHA2 is Present"} Else { Write-Warning "TLS_DHE_RSA_WITH_AES_128_GCM_SHA2 is Missing" }
+       
+       $CipherSuiteRequired4 = Get-TlsCipherSuite -Name TLS_DHE_RSA_WITH_AES_128_GCM_SHA2
+       If($CipherSuiteRequired4) { Write-Host "TLS_DHE_RSA_WITH_AES_128_GCM_SHA2 is Present" } Else {  Write-Warning "TLS_DHE_RSA_WITH_AES_128_GCM_SHA2 is Missing" }
